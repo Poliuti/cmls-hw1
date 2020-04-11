@@ -4,7 +4,7 @@ from zipfile import ZipFile
 from os import unlink
 
 URL  = "https://polimi365-my.sharepoint.com/:u:/g/personal/10768481_polimi_it/ET_EMOV_tgBAm2yIQn4m4h0B8FxvxcDCJkpedf_3SRtLWw?download=1"
-NAME = "dataset.zip"
+NAME = "../dataset.zip"
 
 ## download
 print("downloading...")

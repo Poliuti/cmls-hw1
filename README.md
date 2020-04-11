@@ -21,8 +21,8 @@ Built files will be ignored by `git`, please don't track them.
 
 3. Download dataset & unpack:
 
-		pipenv run python download_dataset.py
+		pipenv run python bin/download_dataset.py
 
 4. Run entry point:
 
-		pipenv run python mer
+		pipenv run python bin/main.py
