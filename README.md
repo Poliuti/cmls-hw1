@@ -13,16 +13,16 @@ Built files will be ignored by `git`, please don't track them.
 
 1. Install Pipenv:
 
-	pip3 install pipenv
+		pip3 install pipenv
 
 2. Initialize environment:
 
-	pipenv sync
+		pipenv sync
 
 3. Download dataset & unpack:
 
-	pipenv run python download_dataset.py
+		pipenv run python download_dataset.py
 
 4. Run entry point:
 
-	pipenv run python mer
+		pipenv run python mer
