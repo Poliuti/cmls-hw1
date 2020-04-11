@@ -1,0 +1,8 @@
+# don't track LaTeX build files
+*.aux
+*.pdf
+*.log
+*.fls
+*.out
+*.synctex*
+*.fdb_latexmk
