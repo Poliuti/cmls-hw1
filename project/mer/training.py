@@ -7,12 +7,12 @@ import scipy as sp
 
 from . import model
 
-def train_reg(dataset_path):
+def train_reg():
 	# silly example to try
 	l = 10
-	feats   = model.get_all_features(dataset_path, l)
-	arousal = model.get_all_arousal(dataset_path, l)
-	valence = model.get_all_valence(dataset_path, l)
+	feats   = model.get_all_features(l)
+	arousal = model.get_all_arousal(l)
+	valence = model.get_all_valence(l)
 	## normalization
 	feats_m, feats_std = feats.mean(), feats.std()
 	feats_norm = (feats-feats_m)/feats_std
