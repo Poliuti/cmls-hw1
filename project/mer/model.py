@@ -13,6 +13,7 @@ def get_features(track_id, dataset_path):
 	with open(os.path.join(dataset_path, "features", f"{track_id}.csv")) as fin:
 		feats = pd.read_csv(fin, header=0, index_col=0, sep=";", engine="c")
 	#return pd.concat((feats.mean(), feats.std()), keys=["mean", "std"], axis=1, copy=False)
+	# TODO: how to extract clip-level features from time-level features averaged with a moving average of 3?
 	return feats.mean()
 
 def get_all_features(dataset_path, length=None):
@@ -41,3 +42,10 @@ def get_all_arousal(dataset_path, length=None):
 	"""returns arousal mean and std for every track"""
 	return get_annotations(dataset_path).iloc[:length].loc[:, ["arousal_mean", "arousal_std"]]
 
+
+## dataset splitting
+def get_training_set(dataset_path):
+	pass
+
+def get_testing_set(dataset_path):
+	pass

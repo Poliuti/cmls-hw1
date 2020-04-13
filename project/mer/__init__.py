@@ -2,4 +2,7 @@
 
 from . import (
 	model,
+	training,
+	testing,
+	evaluation
 )
