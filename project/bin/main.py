@@ -2,4 +2,4 @@
 
 import mer
 
-mer.features.ciao() # just a test
+print("Working")
