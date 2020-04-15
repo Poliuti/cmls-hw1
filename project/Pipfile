@@ -5,7 +5,15 @@ verify_ssl = true
 
 [packages]
 requests = "*"
-mer = { path = "./", editable = true }
+pandas="*"
+numpy="*"
+librosa="*"
+scikit-learn="*"
+matplotlib="*"
+tqdm="*"
+ipykernel="*"
+jupyterlab="*"
+jupytext="*"
 
 [requires]
 python_version = "3"

@@ -2,3 +2,5 @@ dataset/
 run/
 *.egg-info
 *.pyc
+*.ipynb
+.ipynb_checkpoints/
