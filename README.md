@@ -24,5 +24,3 @@ Built files will be ignored by `git`, please don't track them.
 		pipenv run jupyter notebook music_emotion_recognition.py
 
 4. Profit
-
-NB: if you have issues on the imports, check your kernel, it has to be the one connected with the virtual environment (e.g. "Python 3.7.4 64-bit ('project': pipenv)")
