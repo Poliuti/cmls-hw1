@@ -7,6 +7,7 @@
 import numpy as np
 import scipy as sp
 import pandas as pd
+import matplotlib.pyplot as plt
 
 import sklearn.model_selection
 import sklearn.linear_model
@@ -46,6 +47,11 @@ else:
 DATASET_PATH = "./dataset/"
 
 # +
+def feature_selector(name):
+    if "_sma_de" in name:
+        return False
+    return True
+
 @lru_cache(maxsize=None)
 def get_features(track_id):
     """returns a pandas matrix of averaged features for track `track_id`"""
@@ -53,7 +59,7 @@ def get_features(track_id):
         feats = pd.read_csv(fin, header=0, index_col=0, sep=";", engine="c")
     #return pd.concat((feats.mean(), feats.std()), keys=["mean", "std"], axis=1, copy=False)
     # TODO: how to extract clip-level features from time-level features averaged with a moving average of 3?
-    return feats.mean()
+    return feats.loc[:, filter(feature_selector, feats.columns)].mean()
 
 def get_all_features(length=None):
     """iterates over the dataset and extracts features of all tracks"""
@@ -80,7 +86,41 @@ def get_all_annotations(length=None):
 get_all_annotations(10)
 
 
-# ## Regressor Training
+# ## Feature Visualization
+
+# +
+def frame_level_features(track_id):
+    with open(os.path.join(DATASET_PATH, "features", f"{track_id}.csv")) as fin:
+        return pd.read_csv(fin, header=0, index_col=0, sep=";", engine="c")
+
+feats20 = frame_level_features(20)
+F0 = feats20.loc[:, filter(lambda x: "F0final" in x, feats20.columns)]
+F0
+# -
+
+plt.plot(F0)
+
+# ### Valence characteristics
+
+# +
+tid_max_valence = get_all_annotations().loc[:, "valence_mean"].idxmax()
+tid_min_valence = get_all_annotations().loc[:, "valence_mean"].idxmin()
+
+pd.DataFrame((get_features(tid_max_valence), get_features(tid_min_valence)), index=["max", "min"])
+# -
+
+# ### Arousal characteristics
+
+# +
+tid_max_arousal = get_all_annotations().loc[:, "arousal_mean"].idxmax()
+tid_min_arousal = get_all_annotations().loc[:, "arousal_mean"].idxmin()
+
+pd.DataFrame((get_features(tid_max_arousal), get_features(tid_min_arousal)), index=["max", "min"])
+
+
+# -
+
+# # Regression
 
 # +
 def train_linear_regressor(features, annotations):
@@ -90,8 +130,6 @@ def train_linear_regressor(features, annotations):
 
 def predict_regressor(reg, features):
     return pd.Series(reg.predict(features), features.index)
-
-
 # -
 
 # Extract N tracks from the dataset.
@@ -128,8 +166,6 @@ for label in annots.columns:
     linear_predictions = linear_predictions.join(pred, how="right")
 
 linear_predictions
-
-
 # -
 
 # # Evaluation
