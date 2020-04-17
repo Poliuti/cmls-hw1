@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # # Initialization
 
 # ## Imports
@@ -6,7 +7,10 @@
 import numpy as np
 import scipy as sp
 import pandas as pd
+
+import sklearn.model_selection
 import sklearn.linear_model
+import sklearn.svm
 
 from tqdm import tqdm
 from functools import lru_cache
@@ -67,41 +71,75 @@ get_all_features(10)
 
 # ## Extract Annotations
 
-# +
-@lru_cache(maxsize=None)
-def get_annotations():
+@lru_cache(maxsize=1)
+def get_all_annotations(length=None):
     """returns a pandas matrix of all the annotations of all tracks"""
     with open(os.path.join(DATASET_PATH, "annotations.csv")) as fin:
-        return pd.read_csv(fin, header=0, index_col=0, sep=",\s*", engine="python")
+        return pd.read_csv(fin, header=0, index_col=0, sep=",\s*", engine="python").iloc[:length]
 
-def get_all_valence(length=None):
-    """returns valence mean and std for every track"""
-    return get_annotations().iloc[:length].loc[:, ["valence_mean", "valence_std"]]
-
-def get_all_arousal(length=None):
-    """returns arousal mean and std for every track"""
-    return get_annotations().iloc[:length].loc[:, ["arousal_mean", "arousal_std"]]
-# -
-
-get_all_arousal(10)
+get_all_annotations(10)
 
 
 # ## Regressor Training
-# silly example to test
 
 # +
-l = 10
-feats   = get_all_features(l)
-arousal = get_all_arousal(l)
-valence = get_all_valence(l)
+def train_linear_regressor(features, annotations):
+    reg = sklearn.linear_model.LinearRegression()
+    reg.fit(features, annotations)
+    return reg
 
-## normalization
+def predict_regressor(reg, features):
+    return pd.Series(reg.predict(features), features.index)
+
+
+# -
+
+# Extract N tracks from the dataset.
+
+N       = 1000
+feats   = get_all_features(N)
+annots  = get_all_annotations(N)
+
+# For SVM, the dataset should be normalized in order to have $\bar{X}=0$ and $\sigma_X=1$:
+
 feats_m, feats_std = feats.mean(), feats.std()
 feats_norm = (feats-feats_m)/feats_std
 
-## regressor fitting
-a_reg = sklearn.linear_model.LinearRegression()
-a_reg.fit(feats_norm, arousal.loc[:, "arousal_mean"])
+# Split the dataset in training set and testing set.
+
+# +
+(feats_train, feats_test,
+ annots_train, annots_test) = sklearn.model_selection.train_test_split(feats_norm, annots)
+
+print("Training set:", feats_train.index)
+print("Testing set:", feats_test.index)
 # -
 
+# ### Linear Regression
+# Using a linear regression for playing around.
 
+# +
+linear_predictions = pd.DataFrame()
+
+for label in annots.columns:
+    reg = train_linear_regressor(feats_train, annots_train.loc[:, label])
+    pred = predict_regressor(reg, feats_test)
+    pred.name = label
+    linear_predictions = linear_predictions.join(pred, how="right")
+
+linear_predictions
+
+
+# -
+
+# # Evaluation
+
+def get_metrics(prediction, ground_truth):
+    print("MSE:     ", sklearn.metrics.mean_squared_error(ground_truth, prediction))
+    print("R² score:", sklearn.metrics.r2_score(ground_truth, prediction))
+
+
+for label in annots.columns:
+    print(f"=== metrics for {label} ===")
+    get_metrics(linear_predictions.loc[:, label], annots_test.loc[:, label])
+    print()
