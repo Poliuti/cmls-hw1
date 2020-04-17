@@ -54,12 +54,13 @@ def get_features(track_id):
 def get_all_features(length=None):
     """iterates over the dataset and extracts features of all tracks"""
     all_feats = []
-    feature_files = sorted(os.listdir(os.path.join(DATASET_PATH, "features/")), key=lambda name: int(name.split(".")[0]))[:length]
-    for fname in tqdm(feature_files):
-        track_id = fname.split(".")[0]
+    track_files = os.listdir(os.path.join(DATASET_PATH, "features/"))
+    selected_tracks = sorted(map(lambda name: int(name.split(".")[0]), track_files))[:length]
+    for track_id in tqdm(selected_tracks):
         feats = get_features(track_id)
         all_feats.append((track_id, feats))
-    return pd.DataFrame(map(itemgetter(1), all_feats), index=map(itemgetter(0), all_feats))
+    # NB: the upper limit is because we are only interested to the `2-2000` range.
+    return pd.DataFrame(map(itemgetter(1), all_feats), index=map(itemgetter(0), all_feats)).loc[:2000]
 # -
 
 get_all_features(10)
