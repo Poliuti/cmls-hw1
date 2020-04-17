@@ -1,0 +1,23 @@
+F0final
+voicingFinalUnclipped
+jitterLocal
+jitterDDP
+shimmerLocal
+logHNR
+audspec_lengthL1norm
+audspecRasta_lengthL1norm
+pcm_RMSenergy
+pcm_zcr
+audSpec_Rfilt[0 → 25]
+pcm_fftMag_fband250-650, pcm_fftMag_fband1000-4000
+pcm_fftMag_spectralRollOff25.0, pcm_fftMag_spectralRollOff50.0, pcm_fftMag_spectralRollOff75.0, pcm_fftMag_spectralRollOff90.0
+pcm_fftMag_spectralFlux
+pcm_fftMag_spectralCentroid
+pcm_fftMag_spectralEntropy
+pcm_fftMag_spectralVariance
+pcm_fftMag_spectralSkewness
+pcm_fftMag_spectralKurtosis
+pcm_fftMag_spectralSlope
+pcm_fftMag_psySharpness
+pcm_fftMag_spectralHarmonicity
+pcm_fftMag_mfcc[1 → 14]
