@@ -21,6 +21,6 @@ Built files will be ignored by `git`, please don't track them.
 
 3. Run Jupyter Notebook:
 
-		pipenv run jupyter notebook music_emotion_recognition.py
+		pipenv run editor
 
 4. Profit

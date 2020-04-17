@@ -3,6 +3,9 @@ name = "pypi"
 url = "https://pypi.org/simple"
 verify_ssl = true
 
+[scripts]
+editor = "jupyter notebook music_emotion_recognition.py"
+
 [packages]
 requests = "*"
 pandas="*"
