@@ -47,16 +47,19 @@ else:
 DATASET_PATH = "./dataset/"
 
 # +
-def feature_selector(name):
-    if "_sma_de" in name:
-        return False
-    return True
+@lru_cache(maxsize=None)
+def get_frame_level_features(track_id):
+    """returns a pandas matrix of all frame-level features for `track_id`"""
+    with open(os.path.join(DATASET_PATH, "features", f"{track_id}.csv")) as fin:
+        return pd.read_csv(fin, header=0, index_col=0, sep=";", engine="c")
 
+def feature_selector(name):
+    return "zcr" in name or "F0" in name
+    
 @lru_cache(maxsize=None)
 def get_features(track_id):
-    """returns a pandas matrix of averaged features for track `track_id`"""
-    with open(os.path.join(DATASET_PATH, "features", f"{track_id}.csv")) as fin:
-        feats = pd.read_csv(fin, header=0, index_col=0, sep=";", engine="c")
+    """returns a pandas matrix of selected features for track `track_id`"""
+    feats = get_frame_level_features(track_id)
     #return pd.concat((feats.mean(), feats.std()), keys=["mean", "std"], axis=1, copy=False)
     # TODO: how to extract clip-level features from time-level features averaged with a moving average of 3?
     return feats.loc[:, filter(feature_selector, feats.columns)].mean()
@@ -88,17 +91,14 @@ get_all_annotations(10)
 
 # ## Feature Visualization
 
-# +
-def frame_level_features(track_id):
-    with open(os.path.join(DATASET_PATH, "features", f"{track_id}.csv")) as fin:
-        return pd.read_csv(fin, header=0, index_col=0, sep=";", engine="c")
+some_feats = get_frame_level_features(115)
+F = some_feats.loc[:, "pcm_fftMag_spectralHarmonicity_sma_amean"]
+some_feats
 
-feats20 = frame_level_features(20)
-F0 = feats20.loc[:, filter(lambda x: "F0final" in x, feats20.columns)]
-F0
-# -
+print(some_feats.loc[:, "F0final_sma_amean"].mean())
+print(some_feats.loc[:, "F0final_sma_stddev"].mean())
 
-plt.plot(F0)
+plt.plot(F)
 
 # ### Valence characteristics
 
@@ -128,33 +128,38 @@ def train_linear_regressor(features, annotations):
     reg.fit(features, annotations)
     return reg
 
+def train_svm_regressor(features, annotations):
+    reg = sklearn.svm.SVR()
+    reg.fit(features, annotations)
+    return reg
+
 def predict_regressor(reg, features):
     return pd.Series(reg.predict(features), features.index)
 # -
 
 # Extract N tracks from the dataset.
 
-N       = 1000
+N       = 100
 feats   = get_all_features(N)
 annots  = get_all_annotations(N)
-
-# For SVM, the dataset should be normalized in order to have $\bar{X}=0$ and $\sigma_X=1$:
-
-feats_m, feats_std = feats.mean(), feats.std()
-feats_norm = (feats-feats_m)/feats_std
 
 # Split the dataset in training set and testing set.
 
 # +
 (feats_train, feats_test,
- annots_train, annots_test) = sklearn.model_selection.train_test_split(feats_norm, annots)
+ annots_train, annots_test) = sklearn.model_selection.train_test_split(feats, annots)
 
 print("Training set:", feats_train.index)
 print("Testing set:", feats_test.index)
 # -
 
+# Normalize training dataset to have $\bar{X}=0$ and $\sigma_X=1$:
+
+feats_m, feats_std = feats_train.mean(), feats_train.std()
+feats_train = (feats_train-feats_m)/feats_std
+feats_test  = (feats_test-feats_m)/feats_std
+
 # ### Linear Regression
-# Using a linear regression for playing around.
 
 # +
 linear_predictions = pd.DataFrame()
@@ -168,6 +173,22 @@ for label in annots.columns:
 linear_predictions
 # -
 
+# ## SVM Regression
+
+# +
+svm_predictions = pd.DataFrame()
+
+for label in annots.columns:
+    reg = train_svm_regressor(feats_train, annots_train.loc[:, label])
+    pred = predict_regressor(reg, feats_test)
+    pred.name = label
+    svm_predictions = svm_predictions.join(pred, how="right")
+
+svm_predictions
+
+
+# -
+
 # # Evaluation
 
 def get_metrics(prediction, ground_truth):
@@ -175,7 +196,18 @@ def get_metrics(prediction, ground_truth):
     print("R² score:", sklearn.metrics.r2_score(ground_truth, prediction))
 
 
+# ## Metrics for linear regression
+
 for label in annots.columns:
     print(f"=== metrics for {label} ===")
     get_metrics(linear_predictions.loc[:, label], annots_test.loc[:, label])
     print()
+
+# ## Metrics for SVM regression
+
+for label in annots.columns:
+    print(f"=== metrics for {label} ===")
+    get_metrics(svm_predictions.loc[:, label], annots_test.loc[:, label])
+    print()
+
+
