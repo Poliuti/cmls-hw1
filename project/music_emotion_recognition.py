@@ -213,7 +213,9 @@ annots  = get_annotations(length=N)
 
 # Filter features using k-best.
 
-feats = sklearn.feature_selection.SelectKBest(sklearn.feature_selection.f_regression, k=20).fit_transform(feats, annots)
+# +
+#feats = sklearn.feature_selection.SelectKBest(sklearn.feature_selection.f_regression, k=20).fit_transform(feats, annots)
+# -
 
 # Split the dataset in training set and testing set.
 
