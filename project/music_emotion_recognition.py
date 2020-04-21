@@ -12,10 +12,10 @@ import matplotlib.pyplot as plt
 import sklearn.model_selection
 import sklearn.linear_model
 import sklearn.svm
+import sklearn.feature_selection
 
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from functools import lru_cache
-from operator import itemgetter
 from zipfile import ZipFile
 
 import os
@@ -155,9 +155,15 @@ def predict_regressor(reg, features):
 
 # Extract N tracks from the dataset.
 
-N       = 2000
+N       = 100
 feats   = get_features(length=N)
 annots  = get_annotations(length=N)
+
+# Filter features using k-best.
+
+# +
+#sklearn.feature_selection.SelectKBest(sklearn.feature_selection.)
+# -
 
 # Split the dataset in training set and testing set.
 
