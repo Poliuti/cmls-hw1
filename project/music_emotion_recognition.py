@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import sklearn.model_selection
 import sklearn.linear_model
 import sklearn.svm
+import sklearn.neighbors
 import sklearn.feature_selection
 
 from tqdm.notebook import tqdm
@@ -179,9 +180,9 @@ plot_va_means_distributions("pcm_RMSenergy_sma", 30)
 
 plot_va_means_distributions("F0final_sma", 20, np.linspace(0, 500, 100))
 
-plot_va_means_distributions("pcm_fftMag_psySharpness_sma", 5, np.linspace(0, 2.5, 100))
+plot_va_means_distributions("pcm_fftMag_psySharpness_sma", 50, np.linspace(0, 2.5, 100))
 
-plot_va_means_distributions("pcm_fftMag_spectralHarmonicity_sma", 5, np.linspace(0,12,100))
+plot_va_means_distributions("pcm_fftMag_spectralHarmonicity_sma", 30, np.linspace(0,12,100))
 
 # ### Feature time-evolution
 
@@ -190,31 +191,54 @@ plot_va_means_evolution("pcm_zcr_sma_amean", 10)
 
 # # Regression
 
-# +
-def train_linear_regressor(features, annotations):
-    reg = sklearn.linear_model.LinearRegression()
-    reg.fit(features, annotations)
-    return reg
+# ## Preliminary manual feature selection
 
-def train_svm_regressor(features, annotations):
-    reg = sklearn.svm.SVR()
-    reg.fit(features, annotations)
-    return reg
+def get_clip_level_features(track_id):
+    """converts frame-level features to relevant clip-level features"""
+    flf = get_frame_level_features(track_id)
+    feats = list()
+    for func in ["mean", "std", "max", "min"]:
+        feat = flf.__getattribute__(func)()
+        feat.index = map(lambda i: f"{i}__{func}", feat.index)
+        feats.append(feat)
+    sr = pd.concat(feats)
+    sr.name = track_id
+    #return sr.loc[filter(lambda f: not "" in f, sr.index)]
+    return sr
 
-def predict_regressor(reg, features):
-    return pd.Series(reg.predict(features), features.index)
-# -
+
+# ## Preparation
+
+# Common procedure for regression training and testing.
+
+def run_regression(reg, feats_train, feats_test, annots_train, feat_selector):
+    predictions = pd.DataFrame()
+    for label in annots_train.columns:
+        selected_feats_train = feat_selector[label].transform(feats_train)
+        selected_feats_test  = feat_selector[label].transform(feats_test)
+        # regression fitting
+        reg = reg.fit(selected_feats_train, annots_train.loc[:, label])
+        # regression prediction
+        pred = pd.Series(reg.predict(selected_feats_test), feats_test.index)
+        pred.name = label
+        predictions = predictions.join(pred, how="right")
+    return predictions
 
 # Extract N tracks from the dataset.
 
-N       = 100
+N       = 2000
 feats   = get_features(length=N)
 annots  = get_annotations(length=N)
+print(f"shape of feats: {feats.shape}\nshape of annots: {annots.shape}")
 
 # Filter features using k-best.
 
 # +
-#feats = sklearn.feature_selection.SelectKBest(sklearn.feature_selection.f_regression, k=20).fit_transform(feats, annots)
+feat_selector = dict()
+k_best = 100
+
+for label in annots.columns:
+    feat_selector[label] = sklearn.feature_selection.SelectKBest(k=k_best).fit(feats, annots.loc[:, label])
 # -
 
 # Split the dataset in training set and testing set.
@@ -233,35 +257,24 @@ feats_m, feats_std = feats_train.mean(), feats_train.std()
 feats_train = (feats_train-feats_m)/feats_std
 feats_test  = (feats_test-feats_m)/feats_std
 
-# ### Linear Regression
+# ## Linear Regression
 
-# +
-linear_predictions = pd.DataFrame()
-
-for label in annots.columns:
-    reg = train_linear_regressor(feats_train, annots_train.loc[:, label])
-    pred = predict_regressor(reg, feats_test)
-    pred.name = label
-    linear_predictions = linear_predictions.join(pred, how="right")
-
+lin_reg = sklearn.linear_model.LinearRegression()
+linear_predictions = run_regression(lin_reg, feats_train, feats_test, annots_train, feat_selector)
 linear_predictions
-# -
 
 # ## SVM Regression
 
-# +
-svm_predictions = pd.DataFrame()
-
-for label in annots.columns:
-    reg = train_svm_regressor(feats_train, annots_train.loc[:, label])
-    pred = predict_regressor(reg, feats_test)
-    pred.name = label
-    svm_predictions = svm_predictions.join(pred, how="right")
-
+svm_reg = sklearn.svm.SVR()
+svm_predictions = run_regression(svm_reg, feats_train, feats_test, annots_train, feat_selector)
 svm_predictions
 
+# ## KN Regression
 
-# -
+kn_reg = sklearn.neighbors.KNeighborsRegressor(10, "distance")
+kn_predictions = run_regression(kn_reg, feats_train, feats_test, annots_train, feat_selector)
+kn_predictions
+
 
 # # Evaluation
 
@@ -270,7 +283,7 @@ def get_metrics(prediction, ground_truth):
     print("R² score:", sklearn.metrics.r2_score(ground_truth, prediction))
 
 
-# ## Metrics for linear regression
+# ## Metrics for Linear regression
 
 for label in annots.columns:
     print(f"=== metrics for {label} ===")
@@ -282,4 +295,11 @@ for label in annots.columns:
 for label in annots.columns:
     print(f"=== metrics for {label} ===")
     get_metrics(svm_predictions.loc[:, label], annots_test.loc[:, label])
+    print()
+
+# ## Metrics for KN regression
+
+for label in annots.columns:
+    print(f"=== metrics for {label} ===")
+    get_metrics(kn_predictions.loc[:, label], annots_test.loc[:, label])
     print()
