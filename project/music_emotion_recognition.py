@@ -66,10 +66,10 @@ def get_frame_level_features(track_id):
 
 def get_clip_level_features(track_id):
     """converts frame-level features to relevant clip-level features"""
-    # just mean everything for now, will be redefined later in the notebook
+    # just mean everything for now (except deltas), might be redefined later in the notebook
     sr = get_frame_level_features(track_id).mean()
     sr.name = track_id
-    return sr
+    return sr.loc[filter(lambda c: not "_sma_de" in c, sr.index)]
 
 def get_features(selected_tracks=None, length=None):
     """iterates over the dataset and return a pandas matrix of features for all/selected tracks"""
