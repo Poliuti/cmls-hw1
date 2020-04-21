@@ -161,9 +161,7 @@ annots  = get_annotations(length=N)
 
 # Filter features using k-best.
 
-# +
-#sklearn.feature_selection.SelectKBest(sklearn.feature_selection.)
-# -
+sklearn.feature_selection.SelectKBest(sklearn.feature_selection.)
 
 # Split the dataset in training set and testing set.
 
