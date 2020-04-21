@@ -14,7 +14,7 @@ import sklearn.linear_model
 import sklearn.svm
 import sklearn.feature_selection
 
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 from functools import lru_cache
 from zipfile import ZipFile
 
@@ -38,6 +38,17 @@ else:
         z.extractall()
     os.unlink(DW_PATH)
     print("DONE!")
+# -
+
+# ## Other stuff
+
+# +
+RUNTIME_DIR = "./run/"
+
+try:
+    os.mkdir(RUNTIME_DIR)
+except FileExistsError:
+    pass
 # -
 
 # # Model
@@ -70,7 +81,7 @@ def get_features(selected_tracks=None, length=None):
     return pd.DataFrame(all_feats).loc[:2000]
 # -
 
-get_features(length=100)
+get_features(length=50)
 
 # ## Extract Annotations
 
@@ -98,6 +109,9 @@ for label in get_annotations().columns:
 
 # -
 
+# ### Helper functions
+
+# +
 def plot_feature_evolution(tracks, feature_name, time_slice=slice(None)):
     data = pd.concat((
         get_frame_level_features(i).loc[time_slice, feature_name]
@@ -107,33 +121,71 @@ def plot_feature_evolution(tracks, feature_name, time_slice=slice(None)):
     plt.ylabel(feature_name)
     plt.plot(data)
 
+def plot_feature_distribution(tracks, feature_name, x_axis=None):
+    mean_std = get_features(sorted(tracks)).loc[:, [f"{feature_name}_amean", f"{feature_name}_stddev"]]
+    up = mean_std.loc[:, f"{feature_name}_amean"].max() + mean_std.loc[:, f"{feature_name}_stddev"].max()
+    low = mean_std.loc[:, f"{feature_name}_amean"].min() - mean_std.loc[:, f"{feature_name}_stddev"].max()
+    if x_axis is None:
+        x_axis = np.linspace(low, up, 100)
+    dists = mean_std.apply(lambda row: sp.stats.norm(row[0], row[1]).pdf(x_axis), axis=1, result_type="expand")
+    dists.columns = x_axis
+    plt.xlabel(feature_name)
+    plt.ylabel("p.d.f.")
+    plt.plot(dists.T)
+
+
+# -
+
+# Functions for plotting feature-distribution for VA mean values.
+
+def plot_va_means_distributions(feature_name, n_tracks, x_axis=None):
+    plt.figure(figsize=(15,10))
+    i = 1
+    for label in ["valence_mean", "arousal_mean"]:
+        plt.subplot(2,2,i*2-1)
+        plt.title(f"tracks with min. {label}")
+        plot_feature_distribution(mins[label][:n_tracks], feature_name, x_axis)
+        plt.subplot(2,2,i*2)
+        plt.title(f"tracks with max. {label}")
+        plot_feature_distribution(maxs[label][:n_tracks], feature_name, x_axis)
+        i += 1
+    plt.savefig(os.path.join(RUNTIME_DIR, f"{feature_name}-dists.pdf"))
+
+
+# Functions for plotting feature time-evolution for VA mean values.
+
+def plot_va_means_evolution(feature_name, n_tracks, time_slice=slice(10,50)):
+    plt.figure(figsize=(15,10))
+    i = 1
+    for label in ["valence_mean", "arousal_mean"]:
+        plt.subplot(2,2,i*2-1)
+        plt.title(f"tracks with min. {label}")
+        plot_feature_evolution(mins[label][:n_tracks], feature_name, time_slice)
+        plt.subplot(2,2,i*2)
+        plt.title(f"tracks with max. {label}")
+        plot_feature_evolution(maxs[label][:n_tracks], feature_name, time_slice)
+        i += 1
+    plt.savefig(os.path.join(RUNTIME_DIR, f"{feature_name}-time.pdf"))
+
 
 # ### Feature names
 
 with open("features.txt") as fin:
     print(fin.read())
 
-# ### Harmonicity
+# ### Feature distributions
 
-# Plotting Harmonicity evolution for the first 5 tracks with **maximum**/**minumum** valence.
+plot_va_means_distributions("pcm_RMSenergy_sma", 30)
 
-plt.figure(figsize=(15,5))
-plt.subplot(1,2,1)
-plt.title("tracks with min. valence mean")
-plot_feature_evolution(mins["valence_mean"][:5], "pcm_fftMag_spectralHarmonicity_sma_amean", slice(10,50))
-plt.subplot(1,2,2)
-plt.title("tracks with max. valence mean")
-plot_feature_evolution(maxs["valence_mean"][:5], "pcm_fftMag_spectralHarmonicity_sma_amean", slice(10,50))
+plot_va_means_distributions("F0final_sma", 20, np.linspace(0, 500, 100))
 
-# Plotting Harmonicity evolution for the first 5 tracks with **maximum**/**minumum** arousal.
+plot_va_means_distributions("pcm_fftMag_psySharpness_sma", 5, np.linspace(0, 2.5, 100))
 
-plt.figure(figsize=(15,5))
-plt.subplot(1,2,1)
-plt.title("tracks with min. arousal mean")
-plot_feature_evolution(mins["arousal_mean"][:5], "pcm_fftMag_spectralHarmonicity_sma_amean", slice(10,50))
-plt.subplot(1,2,2)
-plt.title("tracks with max. arousal mean")
-plot_feature_evolution(maxs["arousal_mean"][:5], "pcm_fftMag_spectralHarmonicity_sma_amean", slice(10,50))
+plot_va_means_distributions("pcm_fftMag_spectralHarmonicity_sma", 5, np.linspace(0,12,100))
+
+# ### Feature time-evolution
+
+plot_va_means_evolution("pcm_zcr_sma_amean", 10)
 
 
 # # Regression
@@ -161,7 +213,7 @@ annots  = get_annotations(length=N)
 
 # Filter features using k-best.
 
-sklearn.feature_selection.SelectKBest(sklearn.feature_selection.)
+feats = sklearn.feature_selection.SelectKBest(sklearn.feature_selection.f_regression, k=20).fit_transform(feats, annots)
 
 # Split the dataset in training set and testing set.
 
@@ -229,5 +281,3 @@ for label in annots.columns:
     print(f"=== metrics for {label} ===")
     get_metrics(svm_predictions.loc[:, label], annots_test.loc[:, label])
     print()
-
-
