@@ -96,6 +96,14 @@ get_annotations(50)
 
 # ## Feature Visualization
 
+def get_clip_level_features(track_id):
+    """converts frame-level features to relevant clip-level features"""
+    # just mean everything for now (except deltas), might be redefined later in the notebook
+    sr = get_frame_level_features(track_id).mean()
+    sr.name = track_id
+    return sr.loc[filter(lambda c: not "_sma_de" in c, sr.index)]
+
+
 # ### Annotations splitting
 
 # +
@@ -176,13 +184,13 @@ with open("features.txt") as fin:
 
 # ### Feature distributions
 
-plot_va_means_distributions("pcm_RMSenergy_sma", 30)
+plot_va_means_distributions("pcm_RMSenergy_sma", 30, np.linspace(0, 0.4, 100))
 
 plot_va_means_distributions("F0final_sma", 20, np.linspace(0, 500, 100))
 
 plot_va_means_distributions("pcm_fftMag_psySharpness_sma", 50, np.linspace(0, 2.5, 100))
 
-plot_va_means_distributions("pcm_fftMag_spectralHarmonicity_sma", 30, np.linspace(0,12,100))
+plot_va_means_distributions("pcm_fftMag_spectralHarmonicity_sma", 30, np.linspace(0,5,100))
 
 # ### Feature time-evolution
 
