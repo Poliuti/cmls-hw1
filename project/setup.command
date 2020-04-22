@@ -1,5 +1,4 @@
 #!/bin/sh
 cd "`dirname "$0"`"
-python -m pip install --user pipenv
-python -m pipenv sync
-
+python3 -m pip install --user pipenv
+python3 -m pipenv sync
