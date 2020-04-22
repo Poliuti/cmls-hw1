@@ -18,6 +18,6 @@ Built files will be ignored by `git`, please don't track them.
 Some steps are required to deal with the project. For convenience I created some scripts that can just double-clicked to be executed, but in case of any issue you can open them with a text editor to see the commands and try to execute them by yourself (make sure to `cd` inside the `project/` directory first).
 
 1. Make sure you have `python` installed.
-2. *Setup the virtual environment:* execute `setup.sh` (on Linux/MacOS) or `setup.bat` (on Windows). This will install `pipenv` and install the needed dependencies.
-3. *Open Juypiter Notebook:* execute `editor.sh` (on Linux/MacOS) or `editor.bat` (on Windows). This will enable some extensions and start Jupyter's server.
+2. *Setup the virtual environment:* execute `setup.command` (on Linux/MacOS) or `setup.bat` (on Windows). This will install `pipenv` and install the needed dependencies.
+3. *Open Juypiter Notebook:* execute `editor.command` (on Linux/MacOS) or `editor.bat` (on Windows). This will enable some extensions and start Jupyter's server.
 4. Profit. Next times, if you don't encounter dependency issues, you only need the 3rd step.
