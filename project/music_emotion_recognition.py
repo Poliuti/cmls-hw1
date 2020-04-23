@@ -23,6 +23,7 @@ from zipfile import ZipFile
 import os
 import requests
 import shutil
+import inspect
 # -
 
 # ## Download Dataset
@@ -95,8 +96,10 @@ features_to_select = [
 
 # ### Extract features using librosa
 
+# +
 @lru_cache(maxsize=None)
-def extract_features(track_id):
+def new_extract_features(track_id):
+    """returns a pandas series of extracted features for track `track_id`"""
     path = os.path.join(DATASET_PATH, "audio", f"{track_id}.mp3")
     y, sr = librosa.load(path, duration=60)
     features = dict()
@@ -106,10 +109,35 @@ def extract_features(track_id):
             for feat in features_to_extract[tp]:
                 pbar.update()
                 features[feat] = librosa.__getattribute__(tp).__getattribute__(feat)(y=y)
+    # TODO: extract mean/std to a pandas series
     return features
 
+def extract_features(track_id): # to make everything else working in the meanwhile
+    sr = pd.Series(dtype="float64")
+    sr.name = track_id
+    return sr
 
-extract_features(10)["spectral_flatness"].shape
+def get_extracted_features(track_id):
+    # hash features to extract and function code to invalidate cache
+    h = hex(hash((hash(inspect.getsource(extract_features)), hash(repr(features_to_extract)))))[-6:]
+    cache_path = os.path.join(RUNTIME_DIR, f"lrosa_features@{h}.csv")
+    ## open cached file or create a new DataFrame
+    try:
+        with open(cache_path) as fin:
+            features = pd.read_csv(fin, header=0, index_col=0, sep=",", engine="c")
+    except FileNotFoundError:
+        features = pd.DataFrame()
+    ## select features for selected track_id
+    if not track_id in features.index:
+        features[track_id] = extract_features(track_id)
+        with open(cache_path,"w") as fout:
+            features.to_csv(fout)
+    return features[track_id]
+
+
+# -
+
+new_extract_features(10)["spectral_flatness"].shape
 
 
 # ### Load provided features
@@ -126,14 +154,17 @@ def get_clip_level_features(track_id):
     # just mean everything for now (except deltas), might be redefined later in the notebook
     sr = get_frame_level_features(track_id).mean()
     sr.name = track_id
-    return sr.loc[filter(lambda c: not "_sma_de" in c, sr.index)]
+    return sr.loc[filter(lambda c: not "_sma_de" in c and any((f in c for f in features_to_select)), sr.index)]
 
 def get_features(selected_tracks=None, length=None):
     """iterates over the dataset and return a pandas matrix of features for all/selected tracks"""
     if selected_tracks is None:
         track_files = os.listdir(os.path.join(DATASET_PATH, "features/"))
         selected_tracks = sorted(map(lambda name: int(name.split(".")[0]), track_files))[:length]
-    all_feats = (get_clip_level_features(track_id) for track_id in tqdm(selected_tracks, leave=False))
+    all_feats = (
+        pd.concat((get_clip_level_features(track_id), get_extracted_features(track_id)))
+        for track_id in tqdm(selected_tracks, leave=False)
+    )
     # NB: the upper limit is set because we are only interested to the `2-2000` range.
     return pd.DataFrame(all_feats).loc[:2000]
 # -
