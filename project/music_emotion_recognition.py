@@ -20,7 +20,8 @@ from functools import lru_cache
 from zipfile import ZipFile
 
 import os
-import urllib.request
+import requests
+import shutil
 # -
 
 # ## Download Dataset
@@ -33,7 +34,9 @@ if os.path.isdir(DW_PATH[:-4]):
     print("already downloaded.")
 else:
     print("downloading...")
-    urllib.request.urlretrieve(DW_URL, DW_PATH)
+    with requests.get(DW_URL, stream=True) as r:
+        with open(DW_PATH, 'wb') as f:
+            shutil.copyfileobj(r.raw, f)
     print("unzipping...")
     with ZipFile(DW_PATH) as z:
         z.extractall()
