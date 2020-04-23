@@ -7,6 +7,7 @@
 import numpy as np
 import scipy as sp
 import pandas as pd
+import librosa
 import matplotlib.pyplot as plt
 
 import sklearn.model_selection
@@ -60,6 +61,55 @@ except FileExistsError:
 # ## Extract Features
 
 DATASET_PATH = "./dataset/"
+
+# Names of relevant features
+
+# +
+# for librosa
+features_to_extract = {
+    "feature": ["spectral_flatness", "tonnetz", "tempogram"],
+    "effects": ["harmonic", "percussive"],
+    "beat": ["beat_track"]
+}
+
+# filter from dataset
+features_to_select = [
+    "F0final",
+    "RMSenergy",
+    "zcr",
+    "spectralRollOff",
+    "spectralFlux",
+    "spectralCentroid",
+    "spectralEntropy",
+    "spectralVariance",
+    "spectralSkewness",
+    "spectralKurtosis",
+    "spectralSlope",
+    "psySharpness",
+    "spectralHarmonicity",
+    "mfcc",
+]
+
+
+# -
+
+# ### Extract features using librosa
+
+@lru_cache(maxsize=None)
+def extract_features(track_id):
+    path = os.path.join(DATASET_PATH, "audio", f"{track_id}.mp3")
+    y, sr = librosa.load(path, duration=60)
+    features = dict()
+    for tp in features_to_extract.keys():
+        for feat in features_to_extract[tp]:
+            features[feat] = librosa.__getattribute__(tp).__getattribute__(feat)(y=y)
+    return features
+
+
+extract_features(10)["spectral_flatness"].shape
+
+
+# ### Load provided features
 
 # +
 @lru_cache(maxsize=None)
