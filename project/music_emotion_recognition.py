@@ -195,28 +195,35 @@ plot_va_means_distributions("pcm_fftMag_psySharpness_sma", 50, np.linspace(0, 2.
 
 plot_va_means_distributions("pcm_fftMag_spectralHarmonicity_sma", 30, np.linspace(0,5,100))
 
+plot_va_means_distributions("pcm_zcr_sma", 100, np.linspace(0, 0.25, 100))
+
 # ### Feature time-evolution
 
 plot_va_means_evolution("pcm_zcr_sma_amean", 10)
-
 
 # # Regression
 
 # ## Preliminary manual feature selection
 
+# +
+relevant_features = ["zcr", "F0final", "mfcc", "spectralHarmonicity", "psySharpness", "spectralRollOff"]
+relevant_moments = ["mean"] # provide pandas function names
+
 def get_clip_level_features(track_id):
     """converts frame-level features to relevant clip-level features"""
     flf = get_frame_level_features(track_id)
     feats = list()
-    for func in ["mean", "std", "max", "min"]:
+    for func in relevant_moments:
         feat = flf.__getattribute__(func)()
         feat.index = map(lambda i: f"{i}__{func}", feat.index)
         feats.append(feat)
     sr = pd.concat(feats)
     sr.name = track_id
-    #return sr.loc[filter(lambda f: not "" in f, sr.index)]
+    return sr.loc[filter(lambda f: any((x in f for x in relevant_features)), sr.index)]
     return sr
 
+
+# -
 
 # ## Preparation
 
@@ -246,7 +253,7 @@ print(f"shape of feats: {feats.shape}\nshape of annots: {annots.shape}")
 
 # +
 feat_selector = dict()
-k_best = 100
+k_best = 50
 
 for label in annots.columns:
     feat_selector[label] = sklearn.feature_selection.SelectKBest(k=k_best).fit(feats, annots.loc[:, label])
