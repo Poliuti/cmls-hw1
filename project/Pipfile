@@ -18,6 +18,7 @@ tqdm="*"
 ipykernel="*"
 jupyterlab="*"
 jupytext="*"
+ipywidgets="*"
 
 [requires]
 python_version = "3"
