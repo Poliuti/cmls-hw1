@@ -100,9 +100,12 @@ def extract_features(track_id):
     path = os.path.join(DATASET_PATH, "audio", f"{track_id}.mp3")
     y, sr = librosa.load(path, duration=60)
     features = dict()
-    for tp in features_to_extract.keys():
-        for feat in features_to_extract[tp]:
-            features[feat] = librosa.__getattribute__(tp).__getattribute__(feat)(y=y)
+    f_len = len([x for y in features_to_extract.values() for x in y])
+    with tqdm(total=f_len) as pbar:
+        for tp in features_to_extract.keys():
+            for feat in features_to_extract[tp]:
+                pbar.update()
+                features[feat] = librosa.__getattribute__(tp).__getattribute__(feat)(y=y)
     return features
 
 
@@ -130,7 +133,7 @@ def get_features(selected_tracks=None, length=None):
     if selected_tracks is None:
         track_files = os.listdir(os.path.join(DATASET_PATH, "features/"))
         selected_tracks = sorted(map(lambda name: int(name.split(".")[0]), track_files))[:length]
-    all_feats = (get_clip_level_features(track_id) for track_id in tqdm(selected_tracks))
+    all_feats = (get_clip_level_features(track_id) for track_id in tqdm(selected_tracks, leave=False))
     # NB: the upper limit is set because we are only interested to the `2-2000` range.
     return pd.DataFrame(all_feats).loc[:2000]
 # -
@@ -177,7 +180,7 @@ for label in get_annotations().columns:
 def plot_feature_evolution(tracks, feature_name, time_slice=slice(None)):
     data = pd.concat((
         get_frame_level_features(i).loc[time_slice, feature_name]
-        for i in tqdm(tracks)
+        for i in tqdm(tracks, leave=False)
         ), axis=1)
     plt.xlabel("time")
     plt.ylabel(feature_name)
@@ -189,11 +192,11 @@ def plot_feature_distribution(tracks, feature_name, x_axis=None):
     low = mean_std.loc[:, f"{feature_name}_amean"].min() - mean_std.loc[:, f"{feature_name}_stddev"].max()
     if x_axis is None:
         x_axis = np.linspace(low, up, 100)
-    dists = mean_std.apply(lambda row: sp.stats.norm(row[0], row[1]).pdf(x_axis), axis=1, result_type="expand")
-    dists.columns = x_axis
+    dists = mean_std.apply(lambda row: sp.stats.norm(row[0], row[1]).pdf(x_axis), axis=1, result_type="expand").T
+    dists.index = x_axis
     plt.xlabel(feature_name)
     plt.ylabel("p.d.f.")
-    plt.plot(dists.T)
+    plt.plot(dists)
 
 
 # -
@@ -203,14 +206,17 @@ def plot_feature_distribution(tracks, feature_name, x_axis=None):
 def plot_va_means_distributions(feature_name, n_tracks, x_axis=None):
     plt.figure(figsize=(15,10))
     i = 1
-    for label in ["valence_mean", "arousal_mean"]:
-        plt.subplot(2,2,i*2-1)
-        plt.title(f"tracks with min. {label}")
-        plot_feature_distribution(mins[label][:n_tracks], feature_name, x_axis)
-        plt.subplot(2,2,i*2)
-        plt.title(f"tracks with max. {label}")
-        plot_feature_distribution(maxs[label][:n_tracks], feature_name, x_axis)
-        i += 1
+    with tqdm(total=4, leave=False) as pbar:
+        for label in ["valence_mean", "arousal_mean"]:
+            plt.subplot(2,2,i*2-1)
+            plt.title(f"tracks with min. {label}")
+            plot_feature_distribution(mins[label][:n_tracks], feature_name, x_axis)
+            pbar.update()
+            plt.subplot(2,2,i*2)
+            plt.title(f"tracks with max. {label}")
+            plot_feature_distribution(maxs[label][:n_tracks], feature_name, x_axis)
+            pbar.update()
+            i += 1
     plt.savefig(os.path.join(RUNTIME_DIR, f"{feature_name}-dists.pdf"))
 
 
@@ -219,14 +225,17 @@ def plot_va_means_distributions(feature_name, n_tracks, x_axis=None):
 def plot_va_means_evolution(feature_name, n_tracks, time_slice=slice(10,50)):
     plt.figure(figsize=(15,10))
     i = 1
-    for label in ["valence_mean", "arousal_mean"]:
-        plt.subplot(2,2,i*2-1)
-        plt.title(f"tracks with min. {label}")
-        plot_feature_evolution(mins[label][:n_tracks], feature_name, time_slice)
-        plt.subplot(2,2,i*2)
-        plt.title(f"tracks with max. {label}")
-        plot_feature_evolution(maxs[label][:n_tracks], feature_name, time_slice)
-        i += 1
+    with tqdm(total=4, leave=False) as pbar:
+        for label in ["valence_mean", "arousal_mean"]:
+            plt.subplot(2,2,i*2-1)
+            plt.title(f"tracks with min. {label}")
+            plot_feature_evolution(mins[label][:n_tracks], feature_name, time_slice)
+            pbar.update()
+            plt.subplot(2,2,i*2)
+            plt.title(f"tracks with max. {label}")
+            plot_feature_evolution(maxs[label][:n_tracks], feature_name, time_slice)
+            pbar.update()
+            i += 1
     plt.savefig(os.path.join(RUNTIME_DIR, f"{feature_name}-time.pdf"))
 
 
