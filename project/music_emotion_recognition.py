@@ -187,13 +187,13 @@ with open("features.txt") as fin:
 
 # ### Feature distributions
 
-plot_va_means_distributions("pcm_RMSenergy_sma", 30, np.linspace(0, 0.4, 100))
+plot_va_means_distributions("pcm_RMSenergy_sma", 100, np.linspace(0, 0.4, 100))
 
 plot_va_means_distributions("F0final_sma", 20, np.linspace(0, 500, 100))
 
 plot_va_means_distributions("pcm_fftMag_psySharpness_sma", 50, np.linspace(0, 2.5, 100))
 
-plot_va_means_distributions("pcm_fftMag_spectralHarmonicity_sma", 30, np.linspace(0,5,100))
+plot_va_means_distributions("pcm_fftMag_spectralHarmonicity_sma", 100, np.linspace(0,3,100))
 
 plot_va_means_distributions("pcm_zcr_sma", 100, np.linspace(0, 0.25, 100))
 
@@ -227,8 +227,9 @@ def get_clip_level_features(track_id):
 
 # ## Preparation
 
-# Common procedure for regression training and testing.
+# Common procedure for regression training, testing, and cross-validation.
 
+# +
 def run_regression(reg, feats_train, feats_test, annots_train, feat_selector):
     predictions = pd.DataFrame()
     for label in annots_train.columns:
@@ -241,6 +242,10 @@ def run_regression(reg, feats_train, feats_test, annots_train, feat_selector):
         pred.name = label
         predictions = predictions.join(pred, how="right")
     return predictions
+
+def run_cross_validation(reg):
+    pass #TODO
+# -
 
 # Extract N tracks from the dataset.
 
