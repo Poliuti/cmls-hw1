@@ -24,6 +24,7 @@ import os
 import requests
 import shutil
 import inspect
+import warnings
 # -
 
 # ## Download Dataset
@@ -68,9 +69,9 @@ DATASET_PATH = "./dataset/"
 # +
 # for librosa
 features_to_extract = {
-    "feature": ["spectral_flatness", "tonnetz", "tempogram"],
+    "feature": ["spectral_flatness", "tonnetz"],
     "effects": ["harmonic", "percussive"],
-    "beat": ["beat_track"]
+    "beat": ["tempo"]
 }
 
 # filter from dataset
@@ -98,22 +99,41 @@ features_to_select = [
 
 # +
 @lru_cache(maxsize=None)
-def new_extract_features(track_id):
+def extract_features(track_id):
     """returns a pandas series of extracted features for track `track_id`"""
     path = os.path.join(DATASET_PATH, "audio", f"{track_id}.mp3")
-    y, sr = librosa.load(path, duration=60)
-    features = dict()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        y, sr = librosa.load(path, duration=60)
+    raw_features = dict()
+    features = list()
     f_len = len([x for y in features_to_extract.values() for x in y])
-    with tqdm(total=f_len) as pbar:
+    # extract features using librosa
+    with tqdm(total=f_len, leave=False) as pbar:
         for tp in features_to_extract.keys():
-            for feat in features_to_extract[tp]:
+            for featname in features_to_extract[tp]:
                 pbar.update()
-                features[feat] = librosa.__getattribute__(tp).__getattribute__(feat)(y=y)
-    # TODO: extract mean/std to a pandas series
-    return features
-
-def extract_features(track_id): # to make everything else working in the meanwhile
-    sr = pd.Series(dtype="float64")
+                raw_features[featname] = librosa.__getattribute__(tp).__getattribute__(featname)(y=y)
+    # extract mean/stddev
+    for featname in raw_features.keys():
+        feats = raw_features[featname]
+        if len(feats.shape) == 1:
+            ## one-column feature
+            features.append(
+                pd.Series((feats.mean(), feats.std()), index=[f"{featname}_amean", f"{featname}_stddev"])
+                if feats.shape[0] > 1 else
+                pd.Series(feats, index=[featname])
+            )
+        else:
+            ## multi-column feature
+            features.append(
+                pd.concat((
+                    pd.Series(feats.mean(), index=[f"{featname}{i}_amean" for i in range(feats.shape[0])]),
+                    pd.Series(feats.std(), index=[f"{featname}{i}_stddev" for i in range(feats.shape[0])])
+                ))
+            )
+    # concat all features to a single pandas series
+    sr = pd.concat(features)
     sr.name = track_id
     return sr
 
@@ -124,20 +144,20 @@ def get_extracted_features(track_id):
     ## open cached file or create a new DataFrame
     try:
         with open(cache_path) as fin:
-            features = pd.read_csv(fin, header=0, index_col=0, sep=",", engine="c")
+            features = pd.read_csv(fin, header=0, index_col=0, sep=",", engine="c").T
     except FileNotFoundError:
         features = pd.DataFrame()
     ## select features for selected track_id
     if not track_id in features.index:
         features[track_id] = extract_features(track_id)
         with open(cache_path,"w") as fout:
-            features.to_csv(fout)
+            features.T.to_csv(fout)
     return features[track_id]
 
 
 # -
 
-new_extract_features(10)["spectral_flatness"].shape
+get_extracted_features(10)
 
 
 # ### Load provided features
@@ -169,7 +189,7 @@ def get_features(selected_tracks=None, length=None):
     return pd.DataFrame(all_feats).loc[:2000]
 # -
 
-get_features(length=50)
+_=get_features()
 
 # ## Extract Annotations
 
@@ -183,13 +203,14 @@ get_annotations(50)
 
 # ## Feature Visualization
 
-def get_clip_level_features(track_id):
-    """converts frame-level features to relevant clip-level features"""
-    # just mean everything for now (except deltas), might be redefined later in the notebook
-    sr = get_frame_level_features(track_id).mean()
-    sr.name = track_id
-    return sr.loc[filter(lambda c: not "_sma_de" in c, sr.index)]
-
+# +
+#def get_clip_level_features(track_id):
+#    """converts frame-level features to relevant clip-level features"""
+#    # just mean everything for now (except deltas), might be redefined later in the notebook
+#    sr = get_frame_level_features(track_id).mean()
+#    sr.name = track_id
+#    return sr.loc[filter(lambda c: not "_sma_de" in c, sr.index)]
+# -
 
 # ### Annotations splitting
 
@@ -277,6 +298,8 @@ with open("features.txt") as fin:
 
 # ### Feature distributions
 
+plot_va_means_distributions("spectral_flatness0", 6, np.linspace(0,0.1,100))
+
 plot_va_means_distributions("pcm_RMSenergy_sma", 100, np.linspace(0, 0.4, 100))
 
 plot_va_means_distributions("F0final_sma", 20, np.linspace(0, 500, 100))
@@ -291,28 +314,26 @@ plot_va_means_distributions("pcm_zcr_sma", 100, np.linspace(0, 0.25, 100))
 
 plot_va_means_evolution("pcm_zcr_sma_amean", 10)
 
+
 # # Regression
 
 # ## Preliminary manual feature selection
 
 # +
-relevant_features = ["zcr", "F0final", "mfcc", "spectralHarmonicity", "psySharpness", "spectralRollOff"]
-relevant_moments = ["mean"] # provide pandas function names
+#relevant_features = ["zcr", "F0final", "mfcc", "spectralHarmonicity", "psySharpness", "spectralRollOff"]
+#relevant_moments = ["mean"] # provide pandas function names
 
-def get_clip_level_features(track_id):
-    """converts frame-level features to relevant clip-level features"""
-    flf = get_frame_level_features(track_id)
-    feats = list()
-    for func in relevant_moments:
-        feat = flf.__getattribute__(func)()
-        feat.index = map(lambda i: f"{i}__{func}", feat.index)
-        feats.append(feat)
-    sr = pd.concat(feats)
-    sr.name = track_id
-    return sr.loc[filter(lambda f: any((x in f for x in relevant_features)), sr.index)]
-    return sr
-
-
+#def get_clip_level_features(track_id):
+#    """converts frame-level features to relevant clip-level features"""
+#    flf = get_frame_level_features(track_id)
+#    feats = list()
+#    for func in relevant_moments:
+#        feat = flf.__getattribute__(func)()
+#        feat.index = map(lambda i: f"{i}__{func}", feat.index)
+#        feats.append(feat)
+#    sr = pd.concat(feats)
+#    sr.name = track_id
+#    return sr.loc[filter(lambda f: any((x in f for x in relevant_features)), sr.index)]
 # -
 
 # ## Preparation
