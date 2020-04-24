@@ -19,6 +19,7 @@ import sklearn.feature_selection
 from tqdm.notebook import tqdm
 from functools import lru_cache
 from zipfile import ZipFile
+from multiprocessing import Pool, Lock
 
 import os
 import requests
@@ -69,10 +70,15 @@ DATASET_PATH = "./dataset/"
 # +
 # for librosa
 features_to_extract = {
-    "feature": ["spectral_flatness", "tonnetz"],
+    "feature": ["spectral_flatness", "tonnetz", "chroma_stft"],
     "effects": ["harmonic", "percussive"],
     "beat": ["tempo"]
 }
+feature_moments = {
+    # pandas function → column name
+    "mean": "amean",
+    "std": "stddev",
+} #, "max", "min", "kurtosis"]
 
 # filter from dataset
 features_to_select = [
@@ -97,61 +103,88 @@ features_to_select = [
 
 # ### Extract features using librosa
 
-# +
 @lru_cache(maxsize=None)
-def extract_features(track_id):
-    """returns a pandas series of extracted features for track `track_id`"""
+def extract_raw_features(track_id, duration=60):
+    """returns a dictionary of extracted time-level features for track `track_id`"""
     path = os.path.join(DATASET_PATH, "audio", f"{track_id}.mp3")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        y, sr = librosa.load(path, duration=60)
+        y, sr = librosa.load(path, duration=duration)
     raw_features = dict()
-    features = list()
     f_len = len([x for y in features_to_extract.values() for x in y])
     # extract features using librosa
     with tqdm(total=f_len, leave=False) as pbar:
-        for tp in features_to_extract.keys():
-            for featname in features_to_extract[tp]:
+        for feattype in features_to_extract.keys():
+            for featname in features_to_extract[feattype]:
                 pbar.update()
-                raw_features[featname] = librosa.__getattribute__(tp).__getattribute__(featname)(y=y)
-    # extract mean/stddev
+                raw_features[featname] = getattr(getattr(librosa, feattype), featname)(y=y)
+    return raw_features
+
+
+# convert raw time-level features to pandas series of clip-level features.
+
+def extract_features(track_id):
+    """return a pandas series of extracted clip-level features for track `track_id`"""
+    raw_features = extract_raw_features(track_id)
+    features = list()
+    # extract relevant moments
     for featname in raw_features.keys():
         feats = raw_features[featname]
-        if len(feats.shape) == 1:
+        if len(feats.shape) == 1 or (feats.shape[0] > 1 and feats.shape[1] == 1): # TOFIX
             ## one-column feature
-            features.append(
-                pd.Series((feats.mean(), feats.std()), index=[f"{featname}_amean", f"{featname}_stddev"])
-                if feats.shape[0] > 1 else
-                pd.Series(feats, index=[featname])
-            )
+            if feats.shape[0] > 1:
+                for moment in feature_moments.keys():
+                    features.append(
+                        pd.Series(getattr(pd.Series(feats), moment),
+                                  index=[f"{featname}_{feature_moments[moment]}"])
+                    )
+            else:
+                features.append(
+                    pd.Series(feats, index=[featname])
+                )
         else:
             ## multi-column feature
-            features.append(
-                pd.concat((
-                    pd.Series(feats.mean(), index=[f"{featname}{i}_amean" for i in range(feats.shape[0])]),
-                    pd.Series(feats.std(), index=[f"{featname}{i}_stddev" for i in range(feats.shape[0])])
-                ))
-            )
+            for moment in feature_moments.keys():
+                frame = pd.DataFrame(
+                    feats,
+                    columns=[f"{featname}{i}_{feature_moments[moment]}" for i in range(feats.shape[0])]
+                )
+                features.append(
+                    getattr(frame,moment)
+                )
     # concat all features to a single pandas series
     sr = pd.concat(features)
     sr.name = track_id
     return sr
 
+
+# Caching mechanism to avoid recomputing everything each time.
+
+# +
+LROSA_LOCK = Lock()
+
+def load_lrosa_cached(fname):
+    try:
+        with open(fname) as fin:
+            return pd.read_csv(fin, header=0, index_col=0, sep=",", engine="c").T
+    except (FileNotFoundError, pd.errors.EmptyDataError):
+        return pd.DataFrame()
+
 def get_extracted_features(track_id):
     # hash features to extract and function code to invalidate cache
     h = hex(hash((hash(inspect.getsource(extract_features)), hash(repr(features_to_extract)))))[-6:]
     cache_path = os.path.join(RUNTIME_DIR, f"lrosa_features@{h}.csv")
-    ## open cached file or create a new DataFrame
-    try:
-        with open(cache_path) as fin:
-            features = pd.read_csv(fin, header=0, index_col=0, sep=",", engine="c").T
-    except FileNotFoundError:
-        features = pd.DataFrame()
-    ## select features for selected track_id
+    features = load_lrosa_cached(cache_path)
+    ## check cache
     if not track_id in features.index:
-        features[track_id] = extract_features(track_id)
-        with open(cache_path,"w") as fout:
-            features.T.to_csv(fout)
+        ## cache miss
+        feats = extract_features(track_id)
+        ## save cache, nb: file on disk might have changed, reload with lock
+        with LROSA_LOCK:
+            features = load_lrosa_cached(cache_path)
+            features[track_id] = feats
+            with open(cache_path,"w") as fout:
+                features.T.to_csv(fout)
     return features[track_id]
 
 
@@ -176,20 +209,27 @@ def get_clip_level_features(track_id):
     sr.name = track_id
     return sr.loc[filter(lambda c: not "_sma_de" in c and any((f in c for f in features_to_select)), sr.index)]
 
+def concat_features(track_id):
+    #return pd.concat((get_clip_level_features(track_id), get_extracted_features(track_id)))
+    return get_clip_level_features(track_id)
+
 def get_features(selected_tracks=None, length=None):
     """iterates over the dataset and return a pandas matrix of features for all/selected tracks"""
     if selected_tracks is None:
         track_files = os.listdir(os.path.join(DATASET_PATH, "features/"))
         selected_tracks = sorted(map(lambda name: int(name.split(".")[0]), track_files))[:length]
-    all_feats = (
-        pd.concat((get_clip_level_features(track_id), get_extracted_features(track_id)))
-        for track_id in tqdm(selected_tracks, leave=False)
-    )
+    all_feats = list()
+    with Pool() as p:
+        with tqdm(total=len(selected_tracks), leave=False) as pbar:
+            for featline in p.imap_unordered(concat_features, selected_tracks):
+                pbar.update()
+                all_feats.append(featline)
     # NB: the upper limit is set because we are only interested to the `2-2000` range.
-    return pd.DataFrame(all_feats).loc[:2000]
-# -
+    return pd.DataFrame(all_feats).sort_index().loc[:2000]
 
-_=get_features()
+# +
+#_=get_features()
+# -
 
 # ## Extract Annotations
 
@@ -300,7 +340,7 @@ with open("features.txt") as fin:
 
 plot_va_means_distributions("spectral_flatness0", 6, np.linspace(0,0.1,100))
 
-plot_va_means_distributions("pcm_RMSenergy_sma", 100, np.linspace(0, 0.4, 100))
+plot_va_means_distributions("pcm_RMSenergy_sma", 10, np.linspace(0, 0.4, 100))
 
 plot_va_means_distributions("F0final_sma", 20, np.linspace(0, 500, 100))
 
@@ -360,7 +400,7 @@ def run_cross_validation(reg):
 
 # Extract N tracks from the dataset.
 
-N       = 2000
+N       = 100
 feats   = get_features(length=N)
 annots  = get_annotations(length=N)
 print(f"shape of feats: {feats.shape}\nshape of annots: {annots.shape}")
