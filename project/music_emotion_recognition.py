@@ -121,6 +121,10 @@ def extract_raw_features(track_id, duration=60):
     return raw_features
 
 
+for i in extract_raw_features(10).values():
+    print(i.shape)
+
+
 # convert raw time-level features to pandas series of clip-level features.
 
 def extract_features(track_id):
@@ -130,12 +134,12 @@ def extract_features(track_id):
     # extract relevant moments
     for featname in raw_features.keys():
         feats = raw_features[featname]
-        if len(feats.shape) == 1 or (feats.shape[0] > 1 and feats.shape[1] == 1): # TOFIX
+        if len(feats.shape) == 1:
             ## one-column feature
             if feats.shape[0] > 1:
                 for moment in feature_moments.keys():
                     features.append(
-                        pd.Series(getattr(pd.Series(feats), moment),
+                        pd.Series(getattr(pd.Series(feats), moment)(),
                                   index=[f"{featname}_{feature_moments[moment]}"])
                     )
             else:
@@ -144,13 +148,15 @@ def extract_features(track_id):
                 )
         else:
             ## multi-column feature
+            if feats.shape[0] == 1: # row vector, we don't like it
+                feats = feats.T
             for moment in feature_moments.keys():
                 frame = pd.DataFrame(
                     feats,
-                    columns=[f"{featname}{i}_{feature_moments[moment]}" for i in range(feats.shape[0])]
+                    columns=[f"{featname}{i}_{feature_moments[moment]}" for i in range(feats.shape[1])]
                 )
                 features.append(
-                    getattr(frame,moment)
+                    getattr(frame,moment)()
                 )
     # concat all features to a single pandas series
     sr = pd.concat(features)
