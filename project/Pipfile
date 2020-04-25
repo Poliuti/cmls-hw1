@@ -8,6 +8,7 @@ editor = "jupyter notebook music_emotion_recognition.py"
 notebook = "jupyter notebook music_emotion_recognition.ipynb"
 
 [packages]
+multiprocess="*"
 requests = "*"
 pandas="*"
 numpy="*"
