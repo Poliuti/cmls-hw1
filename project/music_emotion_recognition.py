@@ -106,6 +106,55 @@ features_to_select = [
 
 # -
 
+# Caching functions.
+
+# +
+def get_cache_path(basename, *args):
+    to_text = lambda sth: inspect.getsource(sth) if callable(sth) else repr(sth)
+    h = hex(hash(tuple(map(hash, map(to_text, args)))))[-6:]
+    return os.path.join(RUNTIME_DIR, f"{basename}@{h}.csv")
+
+def load_cache(fname):
+    try:
+        with open(fname) as fin:
+            return pd.read_csv(fin, header=0, index_col=0, sep=",", engine="c")
+    except (FileNotFoundError, pd.errors.EmptyDataError):
+        return pd.DataFrame()
+
+def save_cache(fname, df)
+    with open(cache_path, "w") as fout:
+        df.to_csv(fout)
+
+def get_cached_features(track_ids, cache_path, extractor_function, bar_desc, pool=None):
+    """
+    iterate over `track_ids` and return a pandas matrix of features
+    as obtained by `extractor_function`, by using caching mechanism and paralel extracting
+    """
+    # TODO: make this function work properly in the context of a pool
+    features = load_cache(cache_path).T # transpose: appending columns to a dataframe is faster
+    missing_tracks = set(track_ids) - set(features.columns)
+    # resolve cache-misses
+    if len(missing_tracks) > 0:
+        # either create a new pool or use provided one
+        p = pool if pool is not None else Pool(initializer=print)
+        # multiprocess-iterate over missing_tracks
+        with tqdm(total=len(missing_tracks), desc=bar_desc, leave=False) as pbar:
+            extractor = p.imap(extractor_function, missing_tracks)
+            yield # allow caller to resume and ask for result later (no progress bar this way! change it)
+            for feats in extractor:
+                features[feats.name] = feats
+                save_cache(cache_path, features.T)
+                pbar.update()
+        # if pool was created here we need to cleanup
+        if pool is None:
+            p.close()
+            p.terminate()
+    # remember to re-transpose to get final matrix
+    return features.T.loc[track_ids]
+
+
+# -
+
 # ### Extract features using librosa
 
 def extract_raw_features(track_id, duration=60):
@@ -175,43 +224,13 @@ def extract_features(track_id):
 extract_features(10)
 
 
-# Caching mechanism to avoid recomputing everything each time.
-
-# +
-def load_lrosa_cached(fname):
-    try:
-        with open(fname) as fin:
-            return pd.read_csv(fin, header=0, index_col=0, sep=",", engine="c")
-    except (FileNotFoundError, pd.errors.EmptyDataError):
-        return pd.DataFrame()
+# Use caching mechanism to avoid recomputing everything each time.
 
 def get_extracted_features(track_ids, pool=None):
     """iterate over `track_ids` and return a pandas matrix of extracted features"""
-    # hash features_to_extract and extract_features function code to invalidate cache
-    h = hex(hash((hash(inspect.getsource(extract_features)), hash(repr(features_to_extract)))))[-6:]
-    cache_path = os.path.join(RUNTIME_DIR, f"lrosa_features@{h}.csv")
-    features = load_lrosa_cached(cache_path).T # transpose: appending columns to a dataframe is faster
-    missing_tracks = set(track_ids) - set(features.columns)
-    # resolve cache-misses
-    if len(missing_tracks) > 0:
-        # either create a new pool or use provided one
-        p = pool if pool is not None else Pool(initializer=print)
-        # multiprocess-iterate over missing_tracks
-        with tqdm(total=len(missing_tracks), desc="get_extracted_features(...)", leave=False) as pbar:
-            for feats in p.imap(extract_features, missing_tracks):
-                features[feats.name] = feats
-                with open(cache_path,"w") as fout:
-                    features.T.to_csv(fout)
-                pbar.update()
-        # if pool was created here we need to cleanup
-        if pool is None:
-            p.close()
-            p.terminate()
-    # remember to re-transpose to get final matrix
-    return features.T.loc[track_ids]
+    cache_path = get_cache_path("lrosa_features", features_to_extract, extract_features)
+    return get_cached_features(track_ids, cache_path, extract_features, "get_extracted_features(...)", pool)
 
-
-# -
 
 get_extracted_features([10, 12])
 
@@ -232,15 +251,17 @@ def get_clip_level_features(track_id):
     sr.name = track_id
     return sr.loc[filter(lambda c: not "_sma_de" in c and any((f in c for f in features_to_select)), sr.index)]
 
-def get_provided_features(track_ids):
-    """iterate over `track_ids` and return a pandas matrix of provided features"""
-    return pd.DataFrame((
-        get_clip_level_features(i)
-        for i in tqdm(track_ids, desc="get_provided_features(...)", leave=False)
-    ))
-
 
 # -
+
+# Caching mechanism.
+
+def get_provided_features(track_ids, pool=None):
+    """iterate over `track_ids` and return a pandas matrix of provided features"""
+    cache_path = get_cache_path("provided_features", get_clip_level_features)
+    return get_cached_features(track_ids, cache_path, get_clip_level_features,
+                               "get_provided_features(...)", pool)
+
 
 # Merge extracted features with provided features and iterate over dataset.
 
@@ -257,10 +278,11 @@ def get_features(selected_tracks=None, length=None):
     ## spawn a process pool for concurrent fetching
     with Pool(initializer=print) as p:
         ## fetch provided features
-        provided = p.apply_async(get_provided_features, (selected_tracks,))
+        #provided = get_provided_features(selected_tracks, p)
         computed = get_extracted_features(selected_tracks, p)
         # NB: the upper limit is set because we are only interested to the `2-2000` range.
-        return computed.join(provided.get()).loc[:2000]
+        return computed
+        #return computed.join(provided.get()).loc[:2000]
 
 
 _=get_features()
