@@ -19,7 +19,7 @@ import sklearn.feature_selection
 from tqdm.notebook import tqdm
 from functools import lru_cache
 from zipfile import ZipFile
-from multiprocessing import Pool, Lock
+from multiprocess import Pool, Lock
 
 import os
 import requests
@@ -215,12 +215,10 @@ def get_clip_level_features(track_id):
     sr.name = track_id
     return sr.loc[filter(lambda c: not "_sma_de" in c and any((f in c for f in features_to_select)), sr.index)]
 
-def concat_features(track_id):
-    return pd.concat((get_clip_level_features(track_id), get_extracted_features(track_id)))
-    #return get_clip_level_features(track_id)
-
 def get_features(selected_tracks=None, length=None):
     """iterates over the dataset and return a pandas matrix of features for all/selected tracks"""
+    concat_features = lambda track_id: pd.concat((get_clip_level_features(track_id), get_extracted_features(track_id)))
+    #return get_clip_level_features(track_id)
     if selected_tracks is None:
         track_files = os.listdir(os.path.join(DATASET_PATH, "features/"))
         selected_tracks = sorted(map(lambda name: int(name.split(".")[0]), track_files))[:length]
