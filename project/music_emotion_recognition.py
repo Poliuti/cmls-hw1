@@ -57,6 +57,10 @@ try:
     os.mkdir(RUNTIME_DIR)
 except FileExistsError:
     pass
+
+# multiprocess fix on Windows
+import dill
+dill.settings['recurse'] = True
 # -
 
 # # Model
@@ -121,8 +125,9 @@ def extract_raw_features(track_id, duration=60):
     return raw_features
 
 
-for i in extract_raw_features(10).values():
-    print(i.shape)
+efeat10 = extract_raw_features(10)
+for k in efeat10.keys():
+    print(k, efeat10[k].shape)
 
 
 # convert raw time-level features to pandas series of clip-level features.
@@ -134,29 +139,32 @@ def extract_features(track_id):
     # extract relevant moments
     for featname in raw_features.keys():
         feats = raw_features[featname]
+        # if we have a single row vector we can just drop the second dimension
+        if len(feats.shape) > 1 and feats.shape[0] == 1:
+            feats = feats.reshape(-1)
+        # now, do we have a vector or a matrix?
         if len(feats.shape) == 1:
-            ## one-column feature
             if feats.shape[0] > 1:
+                ## vector: time-level feature
                 for moment in feature_moments.keys():
                     features.append(
                         pd.Series(getattr(pd.Series(feats), moment)(),
                                   index=[f"{featname}_{feature_moments[moment]}"])
                     )
             else:
+                ## single value feature
                 features.append(
                     pd.Series(feats, index=[featname])
                 )
         else:
             ## multi-column feature
-            if feats.shape[0] == 1: # row vector, we don't like it
-                feats = feats.T
             for moment in feature_moments.keys():
                 frame = pd.DataFrame(
                     feats,
-                    columns=[f"{featname}{i}_{feature_moments[moment]}" for i in range(feats.shape[1])]
+                    index=[f"{featname}{i}_{feature_moments[moment]}" for i in range(feats.shape[0])]
                 )
                 features.append(
-                    getattr(frame,moment)()
+                    getattr(frame,moment)(axis=1) # time evolution is originally as →
                 )
     # concat all features to a single pandas series
     sr = pd.concat(features)
@@ -164,10 +172,12 @@ def extract_features(track_id):
     return sr
 
 
+extract_features(10).index
+
 # Caching mechanism to avoid recomputing everything each time.
 
 # +
-LROSA_LOCK = Lock()
+LROSA_LOCK = None # redefine it later at pool creation
 
 def load_lrosa_cached(fname):
     try:
@@ -176,8 +186,10 @@ def load_lrosa_cached(fname):
     except (FileNotFoundError, pd.errors.EmptyDataError):
         return pd.DataFrame()
 
-def get_extracted_features(track_id):
+def get_extracted_features(track_id, bypass_lock=False):
     # hash features to extract and function code to invalidate cache
+    global LROSA_LOCK
+    print("damn inside!", LROSA_LOCK)
     h = hex(hash((hash(inspect.getsource(extract_features)), hash(repr(features_to_extract)))))[-6:]
     cache_path = os.path.join(RUNTIME_DIR, f"lrosa_features@{h}.csv")
     features = load_lrosa_cached(cache_path)
@@ -186,7 +198,7 @@ def get_extracted_features(track_id):
         ## cache miss
         feats = extract_features(track_id)
         ## save cache, nb: file on disk might have changed, reload with lock
-        with LROSA_LOCK:
+        with Lock() if bypass_lock else LROSA_LOCK[0]:
             features = load_lrosa_cached(cache_path)
             features[track_id] = feats
             with open(cache_path,"w") as fout:
@@ -196,7 +208,7 @@ def get_extracted_features(track_id):
 
 # -
 
-get_extracted_features(10)
+get_extracted_features(10, bypass_lock=True)
 
 
 # ### Load provided features
@@ -217,23 +229,32 @@ def get_clip_level_features(track_id):
 
 def get_features(selected_tracks=None, length=None):
     """iterates over the dataset and return a pandas matrix of features for all/selected tracks"""
-    concat_features = lambda track_id: pd.concat((get_clip_level_features(track_id), get_extracted_features(track_id)))
-    #return get_clip_level_features(track_id)
+    ## helper functions
+    def init_pool(lock):
+        global LROSA_LOCK
+        LROSA_LOCK[0] = lock
+        print("damn!", LROSA_LOCK)
+    def concat_features(track_id):
+        return pd.concat((get_clip_level_features(track_id), get_extracted_features(track_id)))
+    ## read directory if no selected_tracks are provided
     if selected_tracks is None:
         track_files = os.listdir(os.path.join(DATASET_PATH, "features/"))
         selected_tracks = sorted(map(lambda name: int(name.split(".")[0]), track_files))[:length]
     all_feats = list()
-    with Pool() as p:
+    ## spawn a process pool for concurrent fetching
+    with Pool(initializer=init_pool, initargs=(Lock(),)) as p:
         with tqdm(total=len(selected_tracks), leave=False) as pbar:
-            for featline in p.imap_unordered(concat_features, selected_tracks):
+            for featline in p.imap(concat_features, selected_tracks, chunksize=2):
                 pbar.update()
                 all_feats.append(featline)
     # NB: the upper limit is set because we are only interested to the `2-2000` range.
-    return pd.DataFrame(all_feats).sort_index().loc[:2000]
+    return pd.DataFrame(all_feats).loc[:2000]
 
-# +
-#_=get_features()
+
 # -
+
+_=get_features()
+
 
 # ## Extract Annotations
 
