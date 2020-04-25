@@ -19,7 +19,8 @@ import sklearn.feature_selection
 from tqdm.notebook import tqdm
 from functools import lru_cache
 from zipfile import ZipFile
-from multiprocess import Pool, Lock
+from multiprocessing import Pool, Lock
+from mp_functions import *
 
 import os
 import requests
@@ -167,7 +168,7 @@ def extract_features(track_id):
 # Caching mechanism to avoid recomputing everything each time.
 
 # +
-LROSA_LOCK = Lock()
+LROSA_LOCK = Lock() # redefine it later
 
 def load_lrosa_cached(fname):
     try:
@@ -178,6 +179,7 @@ def load_lrosa_cached(fname):
 
 def get_extracted_features(track_id):
     # hash features to extract and function code to invalidate cache
+    global LROSA_LOCK
     h = hex(hash((hash(inspect.getsource(extract_features)), hash(repr(features_to_extract)))))[-6:]
     cache_path = os.path.join(RUNTIME_DIR, f"lrosa_features@{h}.csv")
     features = load_lrosa_cached(cache_path)
@@ -217,13 +219,14 @@ def get_clip_level_features(track_id):
 
 def get_features(selected_tracks=None, length=None):
     """iterates over the dataset and return a pandas matrix of features for all/selected tracks"""
-    concat_features = lambda track_id: pd.concat((get_clip_level_features(track_id), get_extracted_features(track_id)))
-    #return get_clip_level_features(track_id)
+    #concat_features = lambda track_id: pd.concat((get_clip_level_features(track_id), get_extracted_features(track_id)))
+    def init_pool():
+        set_env(get_clip_level_features, get_extracted_features)
     if selected_tracks is None:
         track_files = os.listdir(os.path.join(DATASET_PATH, "features/"))
         selected_tracks = sorted(map(lambda name: int(name.split(".")[0]), track_files))[:length]
     all_feats = list()
-    with Pool() as p:
+    with Pool(initializer=init_pool) as p:
         with tqdm(total=len(selected_tracks), leave=False) as pbar:
             for featline in p.imap_unordered(concat_features, selected_tracks):
                 pbar.update()
@@ -231,9 +234,11 @@ def get_features(selected_tracks=None, length=None):
     # NB: the upper limit is set because we are only interested to the `2-2000` range.
     return pd.DataFrame(all_feats).sort_index().loc[:2000]
 
-# +
-#_=get_features()
+
 # -
+
+_=get_features()
+
 
 # ## Extract Annotations
 
