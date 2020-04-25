@@ -17,11 +17,12 @@ import sklearn.neighbors
 import sklearn.feature_selection
 
 from tqdm.notebook import tqdm
-from functools import lru_cache
+from functools import lru_cache, partial
 from zipfile import ZipFile
-from multiprocess import Pool, Lock
+from multiprocess import Pool, Lock, Manager
 
 import os
+import sys
 import requests
 import shutil
 import inspect
@@ -120,8 +121,8 @@ def extract_raw_features(track_id, duration=60):
     with tqdm(total=f_len, leave=False) as pbar:
         for feattype in features_to_extract.keys():
             for featname in features_to_extract[feattype]:
-                pbar.update()
                 raw_features[featname] = getattr(getattr(librosa, feattype), featname)(y=y)
+                pbar.update()
     return raw_features
 
 
@@ -174,11 +175,10 @@ def extract_features(track_id):
 
 extract_features(10).index
 
+
 # Caching mechanism to avoid recomputing everything each time.
 
 # +
-LROSA_LOCK = None # redefine it later at pool creation
-
 def load_lrosa_cached(fname):
     try:
         with open(fname) as fin:
@@ -186,19 +186,17 @@ def load_lrosa_cached(fname):
     except (FileNotFoundError, pd.errors.EmptyDataError):
         return pd.DataFrame()
 
-def get_extracted_features(track_id, bypass_lock=False):
+def get_extracted_features(track_id, lock):
     # hash features to extract and function code to invalidate cache
-    global LROSA_LOCK
-    print("damn inside!", LROSA_LOCK)
     h = hex(hash((hash(inspect.getsource(extract_features)), hash(repr(features_to_extract)))))[-6:]
     cache_path = os.path.join(RUNTIME_DIR, f"lrosa_features@{h}.csv")
     features = load_lrosa_cached(cache_path)
     ## check cache
-    if not track_id in features.index:
+    if not track_id in features.columns:
         ## cache miss
         feats = extract_features(track_id)
         ## save cache, nb: file on disk might have changed, reload with lock
-        with Lock() if bypass_lock else LROSA_LOCK[0]:
+        with lock:
             features = load_lrosa_cached(cache_path)
             features[track_id] = feats
             with open(cache_path,"w") as fout:
@@ -208,7 +206,7 @@ def get_extracted_features(track_id, bypass_lock=False):
 
 # -
 
-get_extracted_features(10, bypass_lock=True)
+get_extracted_features(10, lock=Lock())
 
 
 # ### Load provided features
@@ -230,23 +228,22 @@ def get_clip_level_features(track_id):
 def get_features(selected_tracks=None, length=None):
     """iterates over the dataset and return a pandas matrix of features for all/selected tracks"""
     ## helper functions
-    def init_pool(lock):
-        global LROSA_LOCK
-        LROSA_LOCK[0] = lock
-        print("damn!", LROSA_LOCK)
-    def concat_features(track_id):
-        return pd.concat((get_clip_level_features(track_id), get_extracted_features(track_id)))
+    def concat_features_with_lock(lrosa_lock, track_id):
+        return pd.concat((get_clip_level_features(track_id), get_extracted_features(track_id, lock=lrosa_lock)))
     ## read directory if no selected_tracks are provided
     if selected_tracks is None:
         track_files = os.listdir(os.path.join(DATASET_PATH, "features/"))
         selected_tracks = sorted(map(lambda name: int(name.split(".")[0]), track_files))[:length]
     all_feats = list()
     ## spawn a process pool for concurrent fetching
-    with Pool(initializer=init_pool, initargs=(Lock(),)) as p:
-        with tqdm(total=len(selected_tracks), leave=False) as pbar:
-            for featline in p.imap(concat_features, selected_tracks, chunksize=2):
-                pbar.update()
-                all_feats.append(featline)
+    with Manager() as m:
+        lrosa_lock = m.Lock()
+        concat_features = partial(concat_features_with_lock, lrosa_lock)
+        with Pool(initializer=tqdm.set_lock, initargs=(m.Lock(),)) as p:
+            with tqdm(total=len(selected_tracks), leave=False) as pbar:
+                for featline in p.imap(concat_features, selected_tracks, chunksize=1):
+                    pbar.update()
+                    all_feats.append(featline)
     # NB: the upper limit is set because we are only interested to the `2-2000` range.
     return pd.DataFrame(all_feats).loc[:2000]
 
