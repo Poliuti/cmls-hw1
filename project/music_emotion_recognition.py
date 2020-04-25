@@ -108,7 +108,6 @@ features_to_select = [
 
 # ### Extract features using librosa
 
-@lru_cache(maxsize=100)
 def extract_raw_features(track_id, duration=60):
     """returns a dictionary of extracted time-level features for track `track_id`"""
     path = os.path.join(DATASET_PATH, "audio", f"{track_id}.mp3")
@@ -118,7 +117,7 @@ def extract_raw_features(track_id, duration=60):
     raw_features = dict()
     f_len = len([x for y in features_to_extract.values() for x in y])
     # extract features using librosa
-    with tqdm(total=f_len, leave=False) as pbar:
+    with tqdm(total=f_len, desc=f"extract_raw_features({track_id})", leave=False) as pbar:
         for feattype in features_to_extract.keys():
             for featname in features_to_extract[feattype]:
                 raw_features[featname] = getattr(getattr(librosa, feattype), featname)(y=y)
@@ -173,41 +172,49 @@ def extract_features(track_id):
     return sr
 
 
-extract_features(10).index
+extract_features(10)
 
 
 # Caching mechanism to avoid recomputing everything each time.
 
 # +
 def load_lrosa_cached(fname):
+    return pd.DataFrame()
     try:
         with open(fname) as fin:
-            return pd.read_csv(fin, header=0, index_col=0, sep=",", engine="c").T
+            return pd.read_csv(fin, header=0, index_col=0, sep=",", engine="c")
     except (FileNotFoundError, pd.errors.EmptyDataError):
         return pd.DataFrame()
 
-@lru_cache(maxsize=None)
-def get_extracted_features(track_id, lock):
-    # hash features to extract and function code to invalidate cache
+def get_extracted_features(track_ids, pool=None):
+    """iterate over `track_ids` and return a pandas matrix of extracted features"""
+    # hash features_to_extract and extract_features function code to invalidate cache
     h = hex(hash((hash(inspect.getsource(extract_features)), hash(repr(features_to_extract)))))[-6:]
     cache_path = os.path.join(RUNTIME_DIR, f"lrosa_features@{h}.csv")
-    features = load_lrosa_cached(cache_path)
-    ## check cache
-    if not track_id in features.columns:
-        ## cache miss
-        feats = extract_features(track_id)
-        ## save cache, nb: file on disk might have changed, reload with lock
-        with lock:
-            features = load_lrosa_cached(cache_path)
-            features[track_id] = feats
-            with open(cache_path,"w") as fout:
-                features.T.to_csv(fout)
-    return features[track_id]
+    features = load_lrosa_cached(cache_path).T # transpose: appending columns to a dataframe is faster
+    missing_tracks = set(track_ids) - set(features.columns)
+    # resolve cache-misses
+    if len(missing_tracks) > 0:
+        # either create a new pool or use provided one
+        p = pool if pool is not None else Pool(initializer=print)
+        # multiprocess-iterate over missing_tracks
+        with tqdm(total=len(missing_tracks), desc="get_extracted_features(...)", leave=False) as pbar:
+            for feats in p.imap(extract_features, missing_tracks):
+                features[feats.name] = feats
+                with open(cache_path,"w") as fout:
+                    features.T.to_csv(fout)
+                pbar.update()
+        # if pool was created here we need to cleanup
+        if pool is None:
+            p.close()
+            p.terminate()
+    # remember to re-transpose to get final matrix
+    return features.T.loc[track_ids]
 
 
 # -
 
-get_extracted_features(10, lock=Lock())
+get_extracted_features([10, 12])
 
 
 # ### Load provided features
@@ -226,6 +233,18 @@ def get_clip_level_features(track_id):
     sr.name = track_id
     return sr.loc[filter(lambda c: not "_sma_de" in c and any((f in c for f in features_to_select)), sr.index)]
 
+def get_provided_features(track_ids):
+    """iterate over `track_ids` and return a pandas matrix of provided features"""
+    return pd.DataFrame((
+        get_clip_level_features(i)
+        for i in tqdm(track_ids, desc="get_provided_features(...)", leave=False)
+    ))
+
+
+# -
+
+# Merge extracted features with provided features and iterate over dataset.
+
 def get_features(selected_tracks=None, length=None):
     """iterates over the dataset and return a pandas matrix of features for all/selected tracks"""
     ## helper functions
@@ -237,19 +256,13 @@ def get_features(selected_tracks=None, length=None):
         selected_tracks = sorted(map(lambda name: int(name.split(".")[0]), track_files))[:length]
     all_feats = list()
     ## spawn a process pool for concurrent fetching
-    with Manager() as m:
-        lrosa_lock = m.Lock()
-        concat_features = partial(concat_features_with_lock, lrosa_lock)
-        with Pool(initializer=tqdm.set_lock, initargs=(m.Lock(),)) as p:
-            with tqdm(total=len(selected_tracks), leave=False) as pbar:
-                for featline in p.imap(concat_features, selected_tracks, chunksize=1):
-                    pbar.update()
-                    all_feats.append(featline)
-    # NB: the upper limit is set because we are only interested to the `2-2000` range.
-    return pd.DataFrame(all_feats).loc[:2000]
+    with Pool(initializer=print) as p:
+        ## fetch provided features
+        provided = p.apply_async(get_provided_features, (selected_tracks,))
+        computed = get_extracted_features(selected_tracks, p)
+        # NB: the upper limit is set because we are only interested to the `2-2000` range.
+        return computed.join(provided.get()).loc[:2000]
 
-
-# -
 
 _=get_features()
 
