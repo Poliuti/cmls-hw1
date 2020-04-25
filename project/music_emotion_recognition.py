@@ -179,7 +179,6 @@ extract_features(10)
 
 # +
 def load_lrosa_cached(fname):
-    return pd.DataFrame()
     try:
         with open(fname) as fin:
             return pd.read_csv(fin, header=0, index_col=0, sep=",", engine="c")
