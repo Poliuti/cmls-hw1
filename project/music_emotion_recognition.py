@@ -108,7 +108,7 @@ features_to_select = [
 
 # ### Extract features using librosa
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=100)
 def extract_raw_features(track_id, duration=60):
     """returns a dictionary of extracted time-level features for track `track_id`"""
     path = os.path.join(DATASET_PATH, "audio", f"{track_id}.mp3")
@@ -186,6 +186,7 @@ def load_lrosa_cached(fname):
     except (FileNotFoundError, pd.errors.EmptyDataError):
         return pd.DataFrame()
 
+@lru_cache(maxsize=None)
 def get_extracted_features(track_id, lock):
     # hash features to extract and function code to invalidate cache
     h = hex(hash((hash(inspect.getsource(extract_features)), hash(repr(features_to_extract)))))[-6:]
