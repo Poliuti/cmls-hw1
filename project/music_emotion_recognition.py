@@ -19,7 +19,8 @@ import sklearn.feature_selection
 from tqdm.notebook import tqdm
 from functools import lru_cache, partial
 from zipfile import ZipFile
-from multiprocess import Pool, Lock, Manager
+from multiprocess import Pool, Lock
+from multiprocess.pool import AsyncResult
 
 import os
 import sys
@@ -106,7 +107,7 @@ features_to_select = [
 
 # -
 
-# Caching functions.
+# ### Caching functions
 
 # +
 def get_cache_path(basename, *args):
@@ -121,7 +122,7 @@ def load_cache(fname):
     except (FileNotFoundError, pd.errors.EmptyDataError):
         return pd.DataFrame()
 
-def save_cache(fname, df)
+def save_cache(fname, df):
     with open(cache_path, "w") as fout:
         df.to_csv(fout)
 
@@ -130,27 +131,51 @@ def get_cached_features(track_ids, cache_path, extractor_function, bar_desc, poo
     iterate over `track_ids` and return a pandas matrix of features
     as obtained by `extractor_function`, by using caching mechanism and paralel extracting
     """
-    # TODO: make this function work properly in the context of a pool
+    # helper function
+    def prepare_out(features):
+        def resolver():
+            nonlocal features
+            if type(features) == AsyncResult:
+                features = features.get()
+            # remember to re-transpose to get final matrix
+            print("running resolver, returning final features", file=sys.stderr)
+            return features.T.loc[track_ids]
+        if pool is None:
+            print("resolving here", file=sys.stderr)
+            return resolver() # wait results in this function
+        print("deferring resolution", file=sys.stderr)
+        return resolver # let the caller wait for results
+    # load cache
     features = load_cache(cache_path).T # transpose: appending columns to a dataframe is faster
+    try:
+        requested_features = prepare_out(features) # if cache hit we return this object
+    except KeyError: # probably a cache-miss
+        pass
     missing_tracks = set(track_ids) - set(features.columns)
-    # resolve cache-misses
     if len(missing_tracks) > 0:
+        # fetch cache misses
+        print("cache miss!", file=sys.stderr)
         # either create a new pool or use provided one
         p = pool if pool is not None else Pool(initializer=print)
-        # multiprocess-iterate over missing_tracks
-        with tqdm(total=len(missing_tracks), desc=bar_desc, leave=False) as pbar:
-            extractor = p.imap(extractor_function, missing_tracks)
-            yield # allow caller to resume and ask for result later (no progress bar this way! change it)
-            for feats in extractor:
+        # helper functions
+        def cache_updater(extractor): # non-thread safe, run only once
+            nonlocal features
+            for feats in tqdm(extractor, total=len(missing_tracks), desc=bar_desc, leave=False):
                 features[feats.name] = feats
                 save_cache(cache_path, features.T)
-                pbar.update()
-        # if pool was created here we need to cleanup
+            print("returning computed features", file=sys.stderr)
+            return features
+        # async-iterate over missing_tracks
+        extractor = p.imap(extractor_function, missing_tracks)
+        new_features = p.apply_async(cache_updater, (extractor,))
+        # replace returning object with complete one
+        requested_features = prepare_out(new_features)
+        # if pool was created here we need to clenup it
         if pool is None:
             p.close()
             p.terminate()
-    # remember to re-transpose to get final matrix
-    return features.T.loc[track_ids]
+    # return resolver/resolved
+    return requested_features
 
 
 # -
@@ -232,7 +257,7 @@ def get_extracted_features(track_ids, pool=None):
     return get_cached_features(track_ids, cache_path, extract_features, "get_extracted_features(...)", pool)
 
 
-get_extracted_features([10, 12])
+get_extracted_features([10])
 
 
 # ### Load provided features
@@ -278,11 +303,10 @@ def get_features(selected_tracks=None, length=None):
     ## spawn a process pool for concurrent fetching
     with Pool(initializer=print) as p:
         ## fetch provided features
-        #provided = get_provided_features(selected_tracks, p)
+        provided = get_provided_features(selected_tracks, p)
         computed = get_extracted_features(selected_tracks, p)
         # NB: the upper limit is set because we are only interested to the `2-2000` range.
-        return computed
-        #return computed.join(provided.get()).loc[:2000]
+        return (provided()).join(computed()).loc[:2000]
 
 
 _=get_features()
