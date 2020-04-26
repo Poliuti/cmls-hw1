@@ -21,6 +21,7 @@ from tqdm.notebook import tqdm
 from functools import lru_cache, partial
 from operator import methodcaller
 from zipfile import ZipFile
+from hashlib import sha1
 
 import concurrent.futures as cf
 import os
@@ -107,8 +108,8 @@ features_to_select = [
 
 # +
 def get_cache_path(basename, *args):
-    to_text = lambda sth: inspect.getsource(sth) if callable(sth) else repr(sth)
-    h = hex(hash(tuple(map(hash, map(to_text, args)))))[-6:]
+    to_bytes = lambda sth: (inspect.getsource(sth) if callable(sth) else repr(sth)).encode()
+    h = sha1(b"".join(map(methodcaller("digest"), map(sha1, map(to_bytes, args))))).hexdigest()[:6]
     return os.path.join(RUNTIME_DIR, f"{basename}@{h}.csv")
 
 def load_cache(fname):
@@ -154,7 +155,7 @@ def get_cached_features(track_ids, cache_path, extractor_function, bar_desc, poo
     # -- cache miss --
     # either create a new pool or use provided one
     p = pool if pool is not None else cf.ThreadPoolExecutor() # initializer=print)
-    # helper functions
+    # helper function
     def cache_updater(extractor): # non-thread safe, run only once
         with tqdm(total=len(missing_tracks), desc=bar_desc, leave=False) as pbar:
             # as_completed returns futures, map is needed to extract resolved values
@@ -164,8 +165,13 @@ def get_cached_features(track_ids, cache_path, extractor_function, bar_desc, poo
                 pbar.update()
         return features
     # async-iterate over missing_tracks
-    extractor = (p.submit(extractor_function, track) for track in missing_tracks)
-    new_features = p.submit(cache_updater, extractor)
+    try:
+        extractor = (p.submit(extractor_function, track) for track in missing_tracks)
+        new_features = p.submit(cache_updater, extractor)
+    except KeyboardInterrupt:
+        p._threads.clear()
+        cf.thread._threads_queues.clear()
+        raise
     # prepare returned object
     requested_features = prepare_out(new_features)
     # if pool was created here we need to clenup it
@@ -301,16 +307,11 @@ def get_features(selected_tracks=None, length=None):
     all_feats = list()
     ## spawn a process pool for concurrent fetching
     with cf.ThreadPoolExecutor() as p:
-        try:
-            ## fetch provided features
-            provided = get_provided_features(selected_tracks, p)
-            computed = get_extracted_features(selected_tracks, p)
-            # NB: the upper limit is set because we are only interested to the `2-2000` range.
-            return (provided.result()).join(computed.result()).loc[:2000]
-        except KeyboardInterrupt:
-            p._threads.clear()
-            cf.thread._threads_queues.clear()
-            raise
+        ## fetch provided features
+        provided = get_provided_features(selected_tracks, p)
+        computed = get_extracted_features(selected_tracks, p)
+        # NB: the upper limit is set because we are only interested to the `2-2000` range.
+        return (provided.result()).join(computed.result()).loc[:2000]
 
 
 _=get_features()
