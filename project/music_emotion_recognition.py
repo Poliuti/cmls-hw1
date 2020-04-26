@@ -165,13 +165,8 @@ def get_cached_features(track_ids, cache_path, extractor_function, bar_desc, poo
                 pbar.update()
         return features
     # async-iterate over missing_tracks
-    try:
-        extractor = (p.submit(extractor_function, track) for track in missing_tracks)
-        new_features = p.submit(cache_updater, extractor)
-    except KeyboardInterrupt:
-        p._threads.clear()
-        cf.thread._threads_queues.clear()
-        raise
+    extractor = (p.submit(extractor_function, track) for track in missing_tracks)
+    new_features = p.submit(cache_updater, extractor)
     # prepare returned object
     requested_features = prepare_out(new_features)
     # if pool was created here we need to clenup it
@@ -306,10 +301,10 @@ def get_features(selected_tracks=None, length=None):
         selected_tracks = sorted(map(lambda name: int(name.split(".")[0]), track_files))[:length]
     all_feats = list()
     ## spawn a process pool for concurrent fetching
-    with cf.ThreadPoolExecutor() as p:
+    with cf.ThreadPoolExecutor(max_workers=os.cpu_count()*2) as p:
         ## fetch provided features
-        provided = get_provided_features(selected_tracks, p)
         computed = get_extracted_features(selected_tracks, p)
+        provided = get_provided_features(selected_tracks, p)
         # NB: the upper limit is set because we are only interested to the `2-2000` range.
         return (provided.result()).join(computed.result()).loc[:2000]
 
