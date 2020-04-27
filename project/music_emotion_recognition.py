@@ -467,11 +467,11 @@ def feature_filter(featname):
 # Common functions for regression training, prediction, and cross-validation.
 
 # +
-def run_regression(reg, feats_train, feats_test, annots_train, feat_selector):
+def run_regression(reg, feats_train, feats_test, annots_train, feat_processor):
     predictions = pd.DataFrame()
     for label in tqdm(annots_train.columns, leave=False):
-        selected_feats_train = feat_selector[label].transform(feats_train)
-        selected_feats_test  = feat_selector[label].transform(feats_test)
+        selected_feats_train = feat_processor[label].transform(feats_train)
+        selected_feats_test  = feat_processor[label].transform(feats_test)
         # regression fitting
         reg = reg.fit(selected_feats_train, annots_train.loc[:, label])
         # regression prediction
@@ -480,8 +480,11 @@ def run_regression(reg, feats_train, feats_test, annots_train, feat_selector):
         predictions = predictions.join(pred, how="right")
     return predictions
 
-def run_cross_validation(reg):
-    pass #TODO
+def run_cross_validation(reg, feats_train, annots_train, feat_processor):
+    for label in tqdm(annots_train.columns, leave=False):
+        selected_feats_train = feat_processor[label].transform(feats_train)
+        scores = model_selection.cross_val_score(reg, selected_feats_train, annots_train.loc[:, label], cv=10)
+        print(f"R² score: {scores.mean() :5.2f} (± {scores.std() * 2 :4.2f})  [{label}]")
 # -
 
 # Extract N tracks from the dataset.
@@ -511,10 +514,10 @@ for label in annots.columns:
         # --- standardize features ---
         preprocessing.StandardScaler(),
         # --- filter out features ---
-        feature_selection.VarianceThreshold(1),
+        #feature_selection.VarianceThreshold(1),
         #feature_selection.SelectKBest(feature_selection.mutual_info_regression, 20),
-        #feature_selection.SelectKBest(feature_selection.f_regression, 50),
-        #feature_selection.RFE(SVR(kernel="linear"), 50),
+        feature_selection.SelectKBest(feature_selection.f_regression, 50),
+        #feature_selection.RFE(SVR(kernel="linear")),
         verbose = True
     )
     feat_processor[label] = pl.fit(feats_train, annots_train.loc[:, label])
@@ -526,23 +529,41 @@ for label in annots.columns:
 
 # ## Linear Regression
 
+# Run cross-validation to find best parameters.
+
 lin_reg = LinearRegression()
+run_cross_validation(lin_reg, feats_train, annots_train, feat_processor)
+
+# Save final predictions for later evaluation.
+
 linear_predictions = run_regression(lin_reg, feats_train, feats_test, annots_train, feat_processor)
 linear_predictions
 
 # ## SVM Regression
 
-svm_reg = SVR() # kernel="linear", epsilon=0.001)
+# Run cross-validation to find best parameters.
+
+svm_reg = SVR(kernel="linear") #, C=1.1, epsilon=0.001)
+run_cross_validation(svm_reg, feats_train, annots_train, feat_processor)
+
+# Save final predictions for later evaluation.
+
 svm_predictions = run_regression(svm_reg, feats_train, feats_test, annots_train, feat_processor)
 svm_predictions
 
 # ## KN Regression
 
+# Run cross-validation to find the best parameters.
+
 kn_reg = KNeighborsRegressor(10, "distance")
+run_cross_validation(kn_reg, feats_train, annots_train, feat_processor)
+
+# Save finale predictions for later evaluation.
+
 kn_predictions = run_regression(kn_reg, feats_train, feats_test, annots_train, feat_processor)
 kn_predictions
 
-# # Evaluation
+# # Final Evaluation
 
 # +
 from sklearn import metrics
