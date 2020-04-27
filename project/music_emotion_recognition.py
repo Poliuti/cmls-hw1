@@ -435,25 +435,25 @@ features_to_select = [
     "RMSenergy",
     "zcr",
     "spectralRollOff",
-    "spectralFlux",
-    "spectralCentroid",
-    "spectralEntropy",
-    "spectralVariance",
-    "spectralSkewness",
-    "spectralKurtosis",
-    "spectralSlope",
+#    "spectralFlux",
+#    "spectralCentroid",
+#    "spectralEntropy",
+#    "spectralVariance",
+#    "spectralSkewness",
+#    "spectralKurtosis",
+#    "spectralSlope",
     "psySharpness",
     "spectralHarmonicity",
     "mfcc",
-    "voicingFinalUnclipped",
-    "jitterLocal",
-    "jitterDDP",
-    "shimmerLocal",
-    "logHNR",
-    "audspec_lengthL1norm",
-    "audspecRasta_lengthL1norm",
-    "Rfilt",
-    "fftMag_fband",
+#    "voicingFinalUnclipped",
+#    "jitterLocal",
+#    "jitterDDP",
+#    "shimmerLocal",
+#    "logHNR",
+#    "audspec_lengthL1norm",
+#    "audspecRasta_lengthL1norm",
+#    "Rfilt",
+#    "fftMag_fband",
 ]
 
 def feature_filter(featname):
@@ -480,7 +480,7 @@ def run_regression(reg, feats_train, feats_test, annots_train, feat_processor):
         predictions = predictions.join(pred, how="right")
     return predictions
 
-def run_cross_validation(reg, feats_train, annots_train, feat_processor):
+def cross_validation_score(reg, feats_train, annots_train, feat_processor):
     for label in tqdm(annots_train.columns, leave=False):
         selected_feats_train = feat_processor[label].transform(feats_train)
         scores = model_selection.cross_val_score(reg, selected_feats_train, annots_train.loc[:, label], cv=10)
@@ -532,7 +532,7 @@ for label in annots.columns:
 # Run cross-validation to find best parameters.
 
 lin_reg = LinearRegression()
-run_cross_validation(lin_reg, feats_train, annots_train, feat_processor)
+cross_validation_score(lin_reg, feats_train, annots_train, feat_processor)
 
 # Save final predictions for later evaluation.
 
@@ -543,8 +543,8 @@ linear_predictions
 
 # Run cross-validation to find best parameters.
 
-svm_reg = SVR(kernel="linear") #, C=1.1, epsilon=0.001)
-run_cross_validation(svm_reg, feats_train, annots_train, feat_processor)
+svm_reg = SVR()
+cross_validation_score(svm_reg, feats_train, annots_train, feat_processor)
 
 # Save final predictions for later evaluation.
 
@@ -556,7 +556,7 @@ svm_predictions
 # Run cross-validation to find the best parameters.
 
 kn_reg = KNeighborsRegressor(10, "distance")
-run_cross_validation(kn_reg, feats_train, annots_train, feat_processor)
+cross_validation_score(kn_reg, feats_train, annots_train, feat_processor)
 
 # Save finale predictions for later evaluation.
 
