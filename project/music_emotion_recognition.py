@@ -1,39 +1,30 @@
 # -*- coding: utf-8 -*-
 # # Initialization
 
-# ## Imports
+# ## Generic imports
 
 # +
 import numpy as np
 import scipy as sp
 import pandas as pd
-import matplotlib.pyplot as plt
 import librosa
-import requests
-
-import sklearn.model_selection
-import sklearn.linear_model
-import sklearn.svm
-import sklearn.neighbors
-import sklearn.feature_selection
 
 from tqdm.notebook import tqdm
 from functools import lru_cache, partial
 from operator import methodcaller
-from zipfile import ZipFile
-from hashlib import sha1
 
 import concurrent.futures as cf
 import os
 import sys
-import shutil
-import inspect
-import warnings
 # -
 
 # ## Download Dataset
 
 # +
+from requests import get as download
+from shutil import copyfileobj
+from zipfile import ZipFile
+
 DW_URL  = "https://polimi365-my.sharepoint.com/:u:/g/personal/10768481_polimi_it/ET_EMOV_tgBAm2yIQn4m4h0B8FxvxcDCJkpedf_3SRtLWw?download=1"
 DW_PATH = "./dataset.zip"
 
@@ -41,9 +32,9 @@ if os.path.isdir(DW_PATH[:-4]):
     print("already downloaded.")
 else:
     print("downloading...")
-    with requests.get(DW_URL, stream=True) as r:
+    with download(DW_URL, stream=True) as r:
         with open(DW_PATH, 'wb') as f:
-            shutil.copyfileobj(r.raw, f)
+            copyfileobj(r.raw, f)
     print("unzipping...")
     with ZipFile(DW_PATH) as z:
         z.extractall()
@@ -85,10 +76,13 @@ feature_moments = {
 # ### Caching functions
 
 # +
+from inspect import getsource
+from hashlib import sha1
+
 CACHE_DIR = "./cache/"
 
 def get_cache_path(basename, *args):
-    to_bytes = lambda sth: (inspect.getsource(sth) if callable(sth) else repr(sth)).encode()
+    to_bytes = lambda sth: (getsource(sth) if callable(sth) else repr(sth)).encode()
     h = sha1(b"".join(map(methodcaller("digest"), map(sha1, map(to_bytes, args))))).hexdigest()[:6]
     return os.path.join(CACHE_DIR, f"{basename}@{h}.csv")
 
@@ -159,6 +153,9 @@ def get_cached_features(track_ids, cache_path, extractor_function, bar_desc, poo
 # -
 
 # ### Extract features using librosa
+
+# +
+import warnings
 
 def extract_raw_features(track_id, duration=60):
     """returns a dictionary of extracted time-level features for track `track_id`"""
@@ -304,6 +301,8 @@ get_annotations(length=10)
 
 # ## Feature Visualization
 
+import matplotlib.pyplot as plt
+
 # ### Annotations splitting
 
 # +
@@ -390,9 +389,11 @@ with open("features.txt") as fin:
 
 # ### Feature distributions
 
-plot_va_means_distributions("spectral_flatness", 10, np.linspace(0,0.1,100))
+plot_va_means_distributions("spectral_flatness", 50, np.linspace(-0.001,0.08,100))
 
-plot_va_means_distributions("pcm_RMSenergy_sma", 10, np.linspace(0, 0.4, 100))
+plot_va_means_distributions("chroma_stft2", 50, np.linspace(-0.2, 1, 100))
+
+plot_va_means_distributions("pcm_RMSenergy_sma", 20, np.linspace(0, 0.4, 100))
 
 plot_va_means_distributions("F0final_sma", 20, np.linspace(0, 500, 100))
 
@@ -400,13 +401,25 @@ plot_va_means_distributions("pcm_fftMag_psySharpness_sma", 50, np.linspace(0, 2.
 
 plot_va_means_distributions("pcm_fftMag_spectralHarmonicity_sma", 100, np.linspace(0,3,100))
 
-plot_va_means_distributions("pcm_zcr_sma", 100, np.linspace(0, 0.25, 100))
+plot_va_means_distributions("pcm_zcr_sma", 25, np.linspace(0, 0.15, 100))
 
 # ### Feature time-evolution
 
 plot_va_means_evolution("pcm_zcr_sma_amean", 10)
 
 # # Regression
+
+# +
+from sklearn import preprocessing
+from sklearn import model_selection
+from sklearn import feature_selection
+
+from sklearn.pipeline import make_pipeline
+
+from sklearn.linear_model import LinearRegression
+from sklearn.svm import SVR
+from sklearn.neighbors import KNeighborsRegressor
+# -
 
 # ## Preliminary manual feature selection
 
@@ -415,8 +428,8 @@ features_to_select = [
     "spectral_flatness",
     "tonnetz",
     "chroma",
-    "harmonic",
-    "percussive",
+#    "harmonic",
+#    "percussive",
     "tempo",
     "F0final",
     "RMSenergy",
@@ -432,6 +445,15 @@ features_to_select = [
     "psySharpness",
     "spectralHarmonicity",
     "mfcc",
+    "voicingFinalUnclipped",
+    "jitterLocal",
+    "jitterDDP",
+    "shimmerLocal",
+    "logHNR",
+    "audspec_lengthL1norm",
+    "audspecRasta_lengthL1norm",
+    "Rfilt",
+    "fftMag_fband",
 ]
 
 def feature_filter(featname):
@@ -442,12 +464,12 @@ def feature_filter(featname):
 
 # ## Preparation
 
-# Common procedure for regression training, testing, and cross-validation.
+# Common functions for regression training, prediction, and cross-validation.
 
 # +
 def run_regression(reg, feats_train, feats_test, annots_train, feat_selector):
     predictions = pd.DataFrame()
-    for label in annots_train.columns:
+    for label in tqdm(annots_train.columns, leave=False):
         selected_feats_train = feat_selector[label].transform(feats_train)
         selected_feats_test  = feat_selector[label].transform(feats_test)
         # regression fitting
@@ -469,57 +491,68 @@ feats   = get_features(length=N, filt=feature_filter)
 annots  = get_annotations(length=N)
 print(f"shape of feats: {feats.shape}\nshape of annots: {annots.shape}")
 
-# Filter features using k-best.
-
-# +
-feat_selector = dict()
-k_best = 100
-
-for label in annots.columns:
-    feat_selector[label] = sklearn.feature_selection.SelectKBest(k=k_best).fit(feats, annots.loc[:, label])
-# -
-
 # Split the dataset in training set and testing set.
 
 # +
 (feats_train, feats_test,
- annots_train, annots_test) = sklearn.model_selection.train_test_split(feats, annots)
+ annots_train, annots_test) = model_selection.train_test_split(feats, annots)
 
 print("Training set:", feats_train.index)
 print("Testing set:", feats_test.index)
 # -
 
-# Normalize training dataset to have $\bar{X}=0$ and $\sigma_X=1$:
+# Preproces features by scaling them to have $\bar{X} = 1$ and $\sigma^2_X = 1$. Then filter out unneeded or redundant features.
 
-feats_m, feats_std = feats_train.mean(), feats_train.std()
-feats_train = (feats_train-feats_m)/feats_std
-feats_test  = (feats_test-feats_m)/feats_std
+# +
+feat_processor = dict()
+
+for label in annots.columns:
+    pl = make_pipeline(
+        # --- standardize features ---
+        preprocessing.StandardScaler(),
+        # --- filter out features ---
+        feature_selection.VarianceThreshold(1),
+        #feature_selection.SelectKBest(feature_selection.mutual_info_regression, 20),
+        #feature_selection.SelectKBest(feature_selection.f_regression, 50),
+        #feature_selection.RFE(SVR(kernel="linear"), 50),
+        verbose = True
+    )
+    feat_processor[label] = pl.fit(feats_train, annots_train.loc[:, label])
+    # print some report
+    n_before = feats_train.iloc[0:1].shape[1]
+    n_after  = pl.transform(feats_train.iloc[0:1]).shape[1]
+    print(f"{'-'*3}\nfeat_processor for {label} reduces features from {n_before} to {n_after}\n{'-'*80}")
+# -
 
 # ## Linear Regression
 
-lin_reg = sklearn.linear_model.LinearRegression()
-linear_predictions = run_regression(lin_reg, feats_train, feats_test, annots_train, feat_selector)
+lin_reg = LinearRegression()
+linear_predictions = run_regression(lin_reg, feats_train, feats_test, annots_train, feat_processor)
 linear_predictions
 
 # ## SVM Regression
 
-svm_reg = sklearn.svm.SVR()
-svm_predictions = run_regression(svm_reg, feats_train, feats_test, annots_train, feat_selector)
+svm_reg = SVR() # kernel="linear", epsilon=0.001)
+svm_predictions = run_regression(svm_reg, feats_train, feats_test, annots_train, feat_processor)
 svm_predictions
 
 # ## KN Regression
 
-kn_reg = sklearn.neighbors.KNeighborsRegressor(10, "distance")
-kn_predictions = run_regression(kn_reg, feats_train, feats_test, annots_train, feat_selector)
+kn_reg = KNeighborsRegressor(10, "distance")
+kn_predictions = run_regression(kn_reg, feats_train, feats_test, annots_train, feat_processor)
 kn_predictions
-
 
 # # Evaluation
 
-def get_metrics(prediction, ground_truth):
-    print("MSE:     ", sklearn.metrics.mean_squared_error(ground_truth, prediction))
-    print("R² score:", sklearn.metrics.r2_score(ground_truth, prediction))
+# +
+from sklearn import metrics
 
+def get_metrics(prediction, ground_truth):
+    print("MSE:     ", metrics.mean_squared_error(ground_truth, prediction))
+    print("R² score:", metrics.r2_score(ground_truth, prediction))
+
+
+# -
 
 # ## Metrics for Linear regression
 
