@@ -100,17 +100,17 @@ features_to_select = [
     "spectralHarmonicity",
     "mfcc",
 ]
-
-
 # -
 
 # ### Caching functions
 
 # +
+CACHE_DIR = "./cache/"
+
 def get_cache_path(basename, *args):
     to_bytes = lambda sth: (inspect.getsource(sth) if callable(sth) else repr(sth)).encode()
     h = sha1(b"".join(map(methodcaller("digest"), map(sha1, map(to_bytes, args))))).hexdigest()[:6]
-    return os.path.join(RUNTIME_DIR, f"{basename}@{h}.csv")
+    return os.path.join(CACHE_DIR, f"{basename}@{h}.csv")
 
 def load_cache(fname):
     try:
