@@ -70,7 +70,6 @@ DATASET_PATH = "./dataset/"
 
 # Names of relevant features
 
-# +
 # for librosa
 features_to_extract = {
     "feature": ["spectral_flatness", "tonnetz", "chroma_stft"],
@@ -82,25 +81,6 @@ feature_moments = {
     "mean": "amean",
     "std": "stddev",
 } #, "max", "min", "kurtosis"]
-
-# filter from dataset
-features_to_select = [
-    "F0final",
-    "RMSenergy",
-    "zcr",
-    "spectralRollOff",
-    "spectralFlux",
-    "spectralCentroid",
-    "spectralEntropy",
-    "spectralVariance",
-    "spectralSkewness",
-    "spectralKurtosis",
-    "spectralSlope",
-    "psySharpness",
-    "spectralHarmonicity",
-    "mfcc",
-]
-# -
 
 # ### Caching functions
 
@@ -271,10 +251,9 @@ def get_frame_level_features(track_id):
 
 def get_clip_level_features(track_id):
     """converts frame-level features to relevant clip-level features"""
-    # just mean everything for now (except deltas), might be redefined later in the notebook
     sr = get_frame_level_features(track_id).mean()
     sr.name = track_id
-    return sr.loc[filter(lambda c: not "_sma_de" in c and any((f in c for f in features_to_select)), sr.index)]
+    return sr
 
 
 # -
@@ -290,7 +269,7 @@ def get_provided_features(track_ids, pool=None):
 
 # Merge extracted features with provided features and iterate over dataset.
 
-def get_features(selected_tracks=None, length=None):
+def get_features(selected_tracks=None, length=None, filt=lambda x: True):
     """iterates over the dataset and return a pandas matrix of features for all/selected tracks"""
     ## helper functions
     def concat_features_with_lock(lrosa_lock, track_id):
@@ -303,10 +282,11 @@ def get_features(selected_tracks=None, length=None):
     ## spawn a process pool for concurrent fetching
     with cf.ThreadPoolExecutor(max_workers=os.cpu_count()*2) as p:
         ## fetch provided features
-        computed = get_extracted_features(selected_tracks, p)
-        provided = get_provided_features(selected_tracks, p)
+        computed  = get_extracted_features(selected_tracks, p)
+        provided  = get_provided_features(selected_tracks, p)
+        all_feats = (provided.result()).join(computed.result())
         # NB: the upper limit is set because we are only interested to the `2-2000` range.
-        return (provided.result()).join(computed.result()).loc[:2000]
+        return all_feats.loc[:2000, filter(filt, all_feats.columns)]
 
 
 get_features(length=10)
@@ -323,15 +303,6 @@ get_annotations(length=10)
 
 
 # ## Feature Visualization
-
-# +
-#def get_clip_level_features(track_id):
-#    """converts frame-level features to relevant clip-level features"""
-#    # just mean everything for now (except deltas), might be redefined later in the notebook
-#    sr = get_frame_level_features(track_id).mean()
-#    sr.name = track_id
-#    return sr.loc[filter(lambda c: not "_sma_de" in c, sr.index)]
-# -
 
 # ### Annotations splitting
 
@@ -435,26 +406,38 @@ plot_va_means_distributions("pcm_zcr_sma", 100, np.linspace(0, 0.25, 100))
 
 plot_va_means_evolution("pcm_zcr_sma_amean", 10)
 
-
 # # Regression
 
 # ## Preliminary manual feature selection
 
 # +
-#relevant_features = ["zcr", "F0final", "mfcc", "spectralHarmonicity", "psySharpness", "spectralRollOff"]
-#relevant_moments = ["mean"] # provide pandas function names
+features_to_select = [
+    "spectral_flatness",
+    "tonnetz",
+    "chroma",
+    "harmonic",
+    "percussive",
+    "tempo",
+    "F0final",
+    "RMSenergy",
+    "zcr",
+    "spectralRollOff",
+    "spectralFlux",
+    "spectralCentroid",
+    "spectralEntropy",
+    "spectralVariance",
+    "spectralSkewness",
+    "spectralKurtosis",
+    "spectralSlope",
+    "psySharpness",
+    "spectralHarmonicity",
+    "mfcc",
+]
 
-#def get_clip_level_features(track_id):
-#    """converts frame-level features to relevant clip-level features"""
-#    flf = get_frame_level_features(track_id)
-#    feats = list()
-#    for func in relevant_moments:
-#        feat = flf.__getattribute__(func)()
-#        feat.index = map(lambda i: f"{i}__{func}", feat.index)
-#        feats.append(feat)
-#    sr = pd.concat(feats)
-#    sr.name = track_id
-#    return sr.loc[filter(lambda f: any((x in f for x in relevant_features)), sr.index)]
+def feature_filter(featname):
+    return any((sel in featname for sel in features_to_select)) and not "_sma_de" in featname
+
+
 # -
 
 # ## Preparation
@@ -482,7 +465,7 @@ def run_cross_validation(reg):
 # Extract N tracks from the dataset.
 
 N       = 2000
-feats   = get_features(length=N)
+feats   = get_features(length=N, filt=feature_filter)
 annots  = get_annotations(length=N)
 print(f"shape of feats: {feats.shape}\nshape of annots: {annots.shape}")
 
@@ -490,7 +473,7 @@ print(f"shape of feats: {feats.shape}\nshape of annots: {annots.shape}")
 
 # +
 feat_selector = dict()
-k_best = 20
+k_best = 100
 
 for label in annots.columns:
     feat_selector[label] = sklearn.feature_selection.SelectKBest(k=k_best).fit(feats, annots.loc[:, label])
