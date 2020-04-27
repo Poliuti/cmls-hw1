@@ -253,7 +253,7 @@ def extract_features(track_id):
 
 def get_extracted_features(track_ids, pool=None):
     """iterate over `track_ids` and return a pandas matrix of extracted features"""
-    cache_path = get_cache_path("lrosa_features", features_to_extract, extract_features)
+    cache_path = get_cache_path("lrosa_features", features_to_extract, feature_moments, extract_features)
     return get_cached_features(track_ids, cache_path, extract_features, "get_extracted_features(...)", pool)
 
 
@@ -309,7 +309,7 @@ def get_features(selected_tracks=None, length=None):
         return (provided.result()).join(computed.result()).loc[:2000]
 
 
-_=get_features()
+get_features(length=10)
 
 
 # ## Extract Annotations
@@ -319,7 +319,7 @@ def get_annotations(length=None):
     with open(os.path.join(DATASET_PATH, "annotations.csv")) as fin:
         return pd.read_csv(fin, header=0, index_col=0, sep=",\s*", engine="python").iloc[:length]
 
-get_annotations(50)
+get_annotations(length=10)
 
 
 # ## Feature Visualization
@@ -419,7 +419,7 @@ with open("features.txt") as fin:
 
 # ### Feature distributions
 
-plot_va_means_distributions("spectral_flatness0", 6, np.linspace(0,0.1,100))
+plot_va_means_distributions("spectral_flatness", 10, np.linspace(0,0.1,100))
 
 plot_va_means_distributions("pcm_RMSenergy_sma", 10, np.linspace(0, 0.4, 100))
 
@@ -481,7 +481,7 @@ def run_cross_validation(reg):
 
 # Extract N tracks from the dataset.
 
-N       = 100
+N       = 2000
 feats   = get_features(length=N)
 annots  = get_annotations(length=N)
 print(f"shape of feats: {feats.shape}\nshape of annots: {annots.shape}")
@@ -490,7 +490,7 @@ print(f"shape of feats: {feats.shape}\nshape of annots: {annots.shape}")
 
 # +
 feat_selector = dict()
-k_best = 50
+k_best = 20
 
 for label in annots.columns:
     feat_selector[label] = sklearn.feature_selection.SelectKBest(k=k_best).fit(feats, annots.loc[:, label])
