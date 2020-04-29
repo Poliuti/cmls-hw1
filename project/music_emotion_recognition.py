@@ -46,9 +46,15 @@ else:
 
 # +
 RUNTIME_DIR = "./run/"
+CACHE_DIR = "./cache/"
 
 try:
     os.mkdir(RUNTIME_DIR)
+except FileExistsError:
+    pass
+
+try:
+    os.mkdir(CACHE_DIR)
 except FileExistsError:
     pass
 # -
@@ -63,7 +69,7 @@ DATASET_PATH = "./dataset/"
 
 # for librosa
 features_to_extract = {
-    "feature": ["spectral_flatness", "tonnetz", "chroma_stft"],
+    "feature": ["spectral_flatness", "tonnetz", "chroma_stft"] # "spectral_contrast"],
     "effects": ["harmonic", "percussive"],
     "beat": ["tempo"]
 }
@@ -71,7 +77,10 @@ feature_moments = {
     # pandas function → column name
     "mean": "amean",
     "std": "stddev",
-} #, "max", "min", "kurtosis"]
+#    "max": "max",
+#    "min": "min",
+#    "kurtosis": "kurtosis",
+}
 
 # ### Caching functions
 
@@ -79,7 +88,6 @@ feature_moments = {
 from inspect import getsource
 from hashlib import sha1
 
-CACHE_DIR = "./cache/"
 
 def get_cache_path(basename, *args):
     to_bytes = lambda sth: (getsource(sth) if callable(sth) else repr(sth)).encode()
@@ -410,14 +418,12 @@ plot_va_means_evolution("pcm_zcr_sma_amean", 10)
 # # Regression
 
 # +
-from sklearn import preprocessing
-from sklearn import model_selection
-from sklearn import feature_selection
+from sklearn import preprocessing, model_selection, feature_selection, clone as skclone
 
 from sklearn.pipeline import make_pipeline
 
-from sklearn.linear_model import LinearRegression
-from sklearn.svm import SVR
+from sklearn.linear_model import LinearRegression, RidgeCV, SGDRegressor
+from sklearn.svm import LinearSVR, SVR, NuSVR
 from sklearn.neighbors import KNeighborsRegressor
 # -
 
@@ -428,32 +434,32 @@ features_to_select = [
     "spectral_flatness",
     "tonnetz",
     "chroma",
-#    "harmonic",
-#    "percussive",
+    "harmonic",
+    "percussive",
     "tempo",
     "F0final",
     "RMSenergy",
     "zcr",
     "spectralRollOff",
-#    "spectralFlux",
-#    "spectralCentroid",
-#    "spectralEntropy",
-#    "spectralVariance",
-#    "spectralSkewness",
-#    "spectralKurtosis",
-#    "spectralSlope",
+    "spectralFlux",
+    "spectralCentroid",
+    "spectralEntropy",
+    "spectralVariance",
+    "spectralSkewness",
+    "spectralKurtosis",
+    "spectralSlope",
     "psySharpness",
     "spectralHarmonicity",
     "mfcc",
-#    "voicingFinalUnclipped",
-#    "jitterLocal",
-#    "jitterDDP",
-#    "shimmerLocal",
-#    "logHNR",
-#    "audspec_lengthL1norm",
-#    "audspecRasta_lengthL1norm",
-#    "Rfilt",
-#    "fftMag_fband",
+    "voicingFinalUnclipped",
+    "jitterLocal",
+    "jitterDDP",
+    "shimmerLocal",
+    "logHNR",
+    "audspec_lengthL1norm",
+    "audspecRasta_lengthL1norm",
+    "Rfilt",
+    "fftMag_fband",
 ]
 
 def feature_filter(featname):
@@ -467,24 +473,46 @@ def feature_filter(featname):
 # Common functions for regression training, prediction, and cross-validation.
 
 # +
-def run_regression(reg, feats_train, feats_test, annots_train, feat_processor):
+def reg_to_regs(regs, keys):
+    if type(regs) == dict:
+        return regs
+    reg = regs
+    regs = dict()
+    for label in keys:
+        regs[label] = skclone(reg)
+    return regs
+
+def run_regression(regs, feats_train, feats_test, annots_train, feat_processor):
+    regs = reg_to_regs(regs, annots_train.columns)
     predictions = pd.DataFrame()
     for label in tqdm(annots_train.columns, leave=False):
         selected_feats_train = feat_processor[label].transform(feats_train)
         selected_feats_test  = feat_processor[label].transform(feats_test)
         # regression fitting
-        reg = reg.fit(selected_feats_train, annots_train.loc[:, label])
+        regs[label].fit(selected_feats_train, annots_train.loc[:, label])
         # regression prediction
-        pred = pd.Series(reg.predict(selected_feats_test), feats_test.index)
+        pred = pd.Series(regs[label].predict(selected_feats_test), feats_test.index)
         pred.name = label
         predictions = predictions.join(pred, how="right")
     return predictions
 
-def cross_validation_score(reg, feats_train, annots_train, feat_processor):
+def cross_validation_score(regs, feats_train, annots_train, feat_processor):
+    regs = reg_to_regs(regs, annots_train.columns)
     for label in tqdm(annots_train.columns, leave=False):
         selected_feats_train = feat_processor[label].transform(feats_train)
-        scores = model_selection.cross_val_score(reg, selected_feats_train, annots_train.loc[:, label], cv=10)
+        scores = model_selection.cross_val_score(regs[label], selected_feats_train, 
+                                                 annots_train.loc[:, label], cv=10)
         print(f"R² score: {scores.mean() :5.2f} (± {scores.std() * 2 :4.2f})  [{label}]")
+
+def run_cross_validation(init_reg, params, feats_train, annots_train, feat_processor, force=False):
+    regs = dict()
+    for label in tqdm(annots_train.columns, leave=False):
+        selected_feats_train = feat_processor[label].transform(feats_train)
+        reg = model_selection.GridSearchCV(init_reg, params, n_jobs=-1, cv=10, refit=False, verbose=1)
+        reg.fit(feats_train, annots_train.loc[:, label])
+        print(reg.best_params_, file=sys.stderr)
+        regs[label] = type(init_reg)(**reg.best_params_)
+    return regs
 # -
 
 # Extract N tracks from the dataset.
@@ -514,11 +542,11 @@ for label in annots.columns:
         # --- standardize features ---
         preprocessing.StandardScaler(),
         # --- filter out features ---
-        #feature_selection.VarianceThreshold(1),
+        feature_selection.VarianceThreshold(0.9),
         #feature_selection.SelectKBest(feature_selection.mutual_info_regression, 20),
-        feature_selection.SelectKBest(feature_selection.f_regression, 50),
+        #feature_selection.SelectKBest(feature_selection.f_regression, 50),
         #feature_selection.RFE(SVR(kernel="linear")),
-        verbose = True
+        verbose = 1
     )
     feat_processor[label] = pl.fit(feats_train, annots_train.loc[:, label])
     # print some report
@@ -531,7 +559,20 @@ for label in annots.columns:
 
 # Run cross-validation to find best parameters.
 
-lin_reg = LinearRegression()
+# +
+#lin_param_grid = (
+#    {
+#        "loss": ("epsilon_insensitive",),
+#        "alpha": (1e-4, 1e-3, 1e-2),
+#        "epsilon": (1e-3, 1e-2, 1e-1),
+#        "tol": (1e-4, 1e-3),
+#    }
+#)
+#lin_reg = run_cross_validation(SGDRegressor(), lin_param_grid, feats_train, annots_train, feat_processor)
+
+lin_reg = RidgeCV()
+# -
+
 cross_validation_score(lin_reg, feats_train, annots_train, feat_processor)
 
 # Save final predictions for later evaluation.
@@ -543,8 +584,16 @@ linear_predictions
 
 # Run cross-validation to find best parameters.
 
+# +
+# svm_param_grid = (
+#   {'C': (1, 10, 100, 1000), 'kernel': ('linear',)},
+#   {'C': (1, 10, 100, 1000), 'gamma': (0.001, 0.0001), 'kernel': ('rbf',)},
+# )
+# svm_reg = run_cross_validation(SVR(), svm_param_grid, feats_train, annots_train, feat_processor)
+
 svm_reg = SVR()
 cross_validation_score(svm_reg, feats_train, annots_train, feat_processor)
+# -
 
 # Save final predictions for later evaluation.
 
@@ -558,7 +607,7 @@ svm_predictions
 kn_reg = KNeighborsRegressor(10, "distance")
 cross_validation_score(kn_reg, feats_train, annots_train, feat_processor)
 
-# Save finale predictions for later evaluation.
+# Save final predictions for later evaluation.
 
 kn_predictions = run_regression(kn_reg, feats_train, feats_test, annots_train, feat_processor)
 kn_predictions
