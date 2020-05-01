@@ -69,8 +69,8 @@ DATASET_PATH = "./dataset/"
 
 # for librosa
 features_to_extract = {
-    "feature": ["spectral_flatness", "tonnetz", "chroma_stft"] # "spectral_contrast"],
-    "effects": ["harmonic", "percussive"],
+    "feature": ["spectral_flatness", "tonnetz", "chroma_stft"], # "spectral_contrast"],
+    "effects" : ["harmonic", "percussive"],
     "beat": ["tempo"]
 }
 feature_moments = {
