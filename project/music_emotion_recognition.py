@@ -69,17 +69,18 @@ DATASET_PATH = "./dataset/"
 
 # for librosa
 features_to_extract = {
-    "feature": ["spectral_flatness", "tonnetz", "chroma_stft"], # "spectral_contrast"],
-    "effects" : ["harmonic", "percussive"],
+    "feature": ["spectral_flatness", "tonnetz", "chroma_stft", "spectral_contrast",
+                "spectral_bandwidth", "tempogram"],
+    "effects": ["harmonic", "percussive"],
     "beat": ["tempo"]
 }
 feature_moments = {
     # pandas function → column name
     "mean": "amean",
     "std": "stddev",
-#    "max": "max",
-#    "min": "min",
-#    "kurtosis": "kurtosis",
+    "max": "max",
+    "min": "min",
+    "kurtosis": "kurtosis",
 }
 
 # ### Caching functions
@@ -177,7 +178,10 @@ def extract_raw_features(track_id, duration=60):
     with tqdm(total=f_len, desc=f"extract_raw_features({track_id})", leave=False) as pbar:
         for feattype in features_to_extract.keys():
             for featname in features_to_extract[feattype]:
-                raw_features[featname] = getattr(getattr(librosa, feattype), featname)(y=y)
+                extra_opts = dict()
+                if featname == "tempogram":
+                    extra_opts["win_length"] = 128
+                raw_features[featname] = getattr(getattr(librosa, feattype), featname)(y=y, **extra_opts)
                 pbar.update()
     return raw_features
 
@@ -517,10 +521,15 @@ def run_cross_validation(init_reg, params, feats_train, annots_train, feat_proce
 
 # Extract N tracks from the dataset.
 
+# +
 N       = 2000
 feats   = get_features(length=N, filt=feature_filter)
 annots  = get_annotations(length=N)
 print(f"shape of feats: {feats.shape}\nshape of annots: {annots.shape}")
+
+# standardize annotations
+annots = pd.DataFrame(preprocessing.scale(annots), columns=annots.columns, index=annots.index)
+# -
 
 # Split the dataset in training set and testing set.
 
