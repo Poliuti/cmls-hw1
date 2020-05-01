@@ -1,9 +1,15 @@
+<<<<<<< HEAD
 \documentclass[12pt,a4paper]{book}
 \usepackage[italian]{babel}
 \usepackage[T1]{fontenc}
 \usepackage[latin1]{inputenc}
 \usepackage{lmodern}
 \begin{document}
+\section{Introduction}
+
+
 	The aim of this document is to describe the realization of a regressor able to predict the mood of a music piece. In particular, in accordance with the Music Emotion Recognition (MER) theory, we used a dimensional approach to face this problem. We considered two "emotion dimensions" to describe emotions: the \textit{valence}, that describes the grade of pleasantness, and the \textit{arousal}, which represents the level of energy.\\
-	The DEAM Dataset was provided to us. We considered 2000 extracts of music pieces, already re-encoded to have the same duration and the same sampling frequency of 44100 Hz. The annotations related to these songs contains the mean values and the standard deviation of both valence and arousal. The DEAM Dataset also contains for each piece a set of values of extracted features, as the zero crossing rate, the spectrum centroid,... The firts step of our research was the \textbf{feature selection} : we studied the usefulness of the data provided and we also extracted other features from the Librosa library in order to have a wider choice. Then we split the dataset to obtain the training and the test set. We also used the method of cross-validation in order to find the best solution. The next step was to implement the \textbf{regressor}, trying with a linear regressor and with Support Vector Machine. At the end the last step was the \textbf{evaluation} of the prediction, using as metrics the mean squared error and the r2 score.\\In the following paragraphs we will analyze in detail our workflow and the tests that led us to our solution of this problem.
+	The DEAM Dataset was provided to us. We considered 2000 extracts of music pieces, already re-encoded to have the same duration and the same sampling frequency of 44100 Hz. The annotations related to these songs contains the mean values and the standard deviation of both valence and arousal. The DEAM Dataset also contains for each piece a set of values of extracted features, as the zero crossing rate, the spectrum centroid,... The firts step of our research was the \textbf{feature selection} : we studied the usefulness of the data provided and we also extracted other features from the Librosa library in order to have a wider choice. Then we split the dataset to obtain the training and the test set. We also used the method of cross-validation in order to find the best solution. The next step was to implement the \textbf{regressors}, trying with linear regression and with Support Vector Machine. At the end the last step was the \textbf{evaluation} of the prediction, using as metrics the mean squared error and the r2 score.\\In the following paragraphs we will analyze in detail our workflow and the tests that led us to our solution of this problem.
 \end{document}
+=======
+
