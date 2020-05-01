@@ -69,7 +69,7 @@ DATASET_PATH = "./dataset/"
 
 # for librosa
 features_to_extract = {
-    "feature": ["spectral_flatness", "tonnetz", "chroma_stft"], # "spectral_contrast", "tempogram"],
+    "feature": ["spectral_flatness", "tonnetz", "chroma_stft", "spectral_contrast", "tempogram"],
     "effects": ["harmonic", "percussive"],
     "beat": ["tempo"]
 }
@@ -77,9 +77,9 @@ feature_moments = {
     # pandas function → column name
     "mean": "amean",
     "std": "stddev",
-#    "max": "max",
-#    "min": "min",
-#    "kurtosis": "kurtosis",
+    "max": "max",
+    "min": "min",
+    "kurtosis": "kurtosis",
 }
 
 # ### Caching functions
