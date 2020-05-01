@@ -246,7 +246,7 @@ def get_extracted_features(track_ids, pool=None):
     return get_cached_features(track_ids, cache_path, extract_features, "get_extracted_features(...)", pool)
 
 
-get_extracted_features([10, 12])
+get_extracted_features([10])
 
 
 # ### Load provided features
@@ -298,8 +298,9 @@ def get_features(selected_tracks=None, length=None, filt=lambda x: True):
         return all_feats.loc[:2000, filter(filt, all_feats.columns)]
 
 
-get_features(length=10)
-
+# +
+#get_features(length = 2000)
+# -
 
 # ## Extract Annotations
 
