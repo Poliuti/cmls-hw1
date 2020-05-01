@@ -330,7 +330,7 @@ for label in get_annotations().columns:
 
 # -
 
-# ### Helper functions
+# ### Plotting functions
 
 # +
 def plot_feature_evolution(tracks, feature_name, time_slice=slice(None)):
@@ -344,26 +344,33 @@ def plot_feature_evolution(tracks, feature_name, time_slice=slice(None)):
 
 def plot_feature_distribution(tracks, feature_name, x_axis=None):
     mean_std = get_features(sorted(tracks)).loc[:, [f"{feature_name}_amean", f"{feature_name}_stddev"]]
-    up = mean_std.loc[:, f"{feature_name}_amean"].max() + mean_std.loc[:, f"{feature_name}_stddev"].max()
-    low = mean_std.loc[:, f"{feature_name}_amean"].min() - mean_std.loc[:, f"{feature_name}_stddev"].max()
+    plot_mean = mean_std.loc[:, f"{feature_name}_amean"].mean()
+    plot_std = mean_std.loc[:, f"{feature_name}_stddev"].mean()
     if x_axis is None:
-        x_axis = np.linspace(low, up, 100)
+        x_axis = np.linspace(plot_mean - plot_std, plot_mean + plot_std, 100)
     dists = mean_std.apply(lambda row: sp.stats.norm(row[0], row[1]).pdf(x_axis), axis=1, result_type="expand").T
     dists.index = x_axis
     plt.xlabel(feature_name)
     plt.ylabel("p.d.f.")
     plt.plot(dists)
 
+def plot_tempo_hist(tracks):
+    tempos = get_features(sorted(tracks)).loc[:, "tempo"]
+    plt.xlabel("bpm")
+    plt.ylabel("# songs")
+    plt.hist(tempos)
+
 
 # -
 
-# Functions for plotting feature-distribution for VA mean values.
+# Functions for plotting 4 quadrants (low-valence, high-valence, low-arousal, high-arousal).
 
-def plot_va_means_distributions(feature_name, n_tracks, x_axis=None):
+# +
+def plot_va_distributions(feature_name, n_tracks, x_axis=None, annot_type="mean"):
     plt.figure(figsize=(15,10))
     i = 1
     with tqdm(total=4, leave=False) as pbar:
-        for label in ["valence_mean", "arousal_mean"]:
+        for label in [f"valence_{annot_type}", f"arousal_{annot_type}"]:
             plt.subplot(2,2,i*2-1)
             plt.title(f"tracks with min. {label}")
             plot_feature_distribution(mins[label][:n_tracks], feature_name, x_axis)
@@ -373,16 +380,13 @@ def plot_va_means_distributions(feature_name, n_tracks, x_axis=None):
             plot_feature_distribution(maxs[label][:n_tracks], feature_name, x_axis)
             pbar.update()
             i += 1
-    plt.savefig(os.path.join(RUNTIME_DIR, f"{feature_name}-dists.pdf"))
+    plt.savefig(os.path.join(RUNTIME_DIR, f"va_{annot_type}-{feature_name}-dists.pdf"))
 
-
-# Functions for plotting feature time-evolution for VA mean values.
-
-def plot_va_means_evolution(feature_name, n_tracks, time_slice=slice(10,50)):
+def plot_va_evolution(feature_name, n_tracks, time_slice=slice(10,50), annot_type="mean"):
     plt.figure(figsize=(15,10))
     i = 1
     with tqdm(total=4, leave=False) as pbar:
-        for label in ["valence_mean", "arousal_mean"]:
+        for label in [f"valence_{annot_type}", f"arousal_{annot_type}"]:
             plt.subplot(2,2,i*2-1)
             plt.title(f"tracks with min. {label}")
             plot_feature_evolution(mins[label][:n_tracks], feature_name, time_slice)
@@ -392,33 +396,54 @@ def plot_va_means_evolution(feature_name, n_tracks, time_slice=slice(10,50)):
             plot_feature_evolution(maxs[label][:n_tracks], feature_name, time_slice)
             pbar.update()
             i += 1
-    plt.savefig(os.path.join(RUNTIME_DIR, f"{feature_name}-time.pdf"))
+    plt.savefig(os.path.join(RUNTIME_DIR, f"va_{annot_type}-{feature_name}-time.pdf"))
 
+def plot_va_tempos(n_tracks, annot_type="mean"):
+    plt.figure(figsize=(15,10))
+    i = 1
+    with tqdm(total=4, leave=False) as pbar:
+        for label in [f"valence_{annot_type}", f"arousal_{annot_type}"]:
+            plt.subplot(2,2,i*2-1)
+            plt.title(f"tracks with min. {label}")
+            plot_tempo_hist(mins[label][:n_tracks])
+            pbar.update()
+            plt.subplot(2,2,i*2)
+            plt.title(f"tracks with max. {label}")
+            plot_tempo_hist(maxs[label][:n_tracks])
+            pbar.update()
+            i += 1
+
+
+# -
 
 # ### Feature names
 
 with open("features.txt") as fin:
     print(fin.read())
 
+# ### Songs tempo
+
+plot_va_tempos(100)
+
 # ### Feature distributions
 
-plot_va_means_distributions("spectral_flatness", 50, np.linspace(-0.001,0.08,100))
+plot_va_distributions("spectral_flatness", 50, np.linspace(-0.01, 0.05, 100))
 
-plot_va_means_distributions("chroma_stft2", 50, np.linspace(-0.2, 1, 100))
+plot_va_distributions("chroma_stft2", 50, np.linspace(-0.2, 1, 100))
 
-plot_va_means_distributions("pcm_RMSenergy_sma", 20, np.linspace(0, 0.4, 100))
+plot_va_distributions("pcm_RMSenergy_sma", 20, np.linspace(0, 0.4, 100))
 
-plot_va_means_distributions("F0final_sma", 20, np.linspace(0, 500, 100))
+plot_va_distributions("F0final_sma", 20, np.linspace(0, 500, 100))
 
-plot_va_means_distributions("pcm_fftMag_psySharpness_sma", 50, np.linspace(0, 2.5, 100))
+plot_va_distributions("pcm_fftMag_psySharpness_sma", 50, np.linspace(0, 2.5, 100))
 
-plot_va_means_distributions("pcm_fftMag_spectralHarmonicity_sma", 100, np.linspace(0,3,100))
+plot_va_distributions("pcm_fftMag_spectralHarmonicity_sma", 100, np.linspace(0,3,100))
 
-plot_va_means_distributions("pcm_zcr_sma", 25, np.linspace(0, 0.15, 100))
+plot_va_distributions("pcm_zcr_sma", 25, np.linspace(0, 0.15, 100))
 
 # ### Feature time-evolution
 
-plot_va_means_evolution("pcm_zcr_sma_amean", 10)
+plot_va_evolution("pcm_zcr_sma_amean", 10, annot_type="mean")
 
 # # Regression
 
