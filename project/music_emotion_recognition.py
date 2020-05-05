@@ -580,10 +580,8 @@ for label in annots.columns:
         # --- standardize features ---
         preprocessing.StandardScaler(),
         # --- filter out features ---
-        feature_selection.VarianceThreshold(0.9),
-        #feature_selection.SelectKBest(feature_selection.mutual_info_regression, 20),
-        #feature_selection.SelectKBest(feature_selection.f_regression, 50),
-        #feature_selection.RFE(SVR(kernel="linear")),
+        feature_selection.VarianceThreshold(1 - 1e-15),
+        feature_selection.SelectKBest(feature_selection.f_regression, 50),
         verbose = 1
     )
     feat_processor[label] = pl.fit(feats_train, annots_train.loc[:, label])
@@ -616,7 +614,6 @@ cross_validation_score(lin_reg, feats_train, annots_train, feat_processor)
 # Save final predictions for later evaluation.
 
 linear_predictions = run_regression(lin_reg, feats_train, feats_test, annots_train, feat_processor)
-linear_predictions
 
 # ## SVM Regression
 
@@ -636,7 +633,6 @@ cross_validation_score(svm_reg, feats_train, annots_train, feat_processor)
 # Save final predictions for later evaluation.
 
 svm_predictions = run_regression(svm_reg, feats_train, feats_test, annots_train, feat_processor)
-svm_predictions
 
 # ## KN Regression
 
@@ -648,7 +644,6 @@ cross_validation_score(kn_reg, feats_train, annots_train, feat_processor)
 # Save final predictions for later evaluation.
 
 kn_predictions = run_regression(kn_reg, feats_train, feats_test, annots_train, feat_processor)
-kn_predictions
 
 # # Final Evaluation
 
