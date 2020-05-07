@@ -188,8 +188,9 @@ def extract_raw_features(track_id, duration=60):
 
 # +
 #efeat10 = extract_raw_features(10)
-#for k in efeat10.keys():
-#    print(k, efeat10[k].shape)
+
+# +
+#efeat10["spectral_flatness"].shape
 # -
 
 # convert raw time-level features to pandas series of clip-level features.
@@ -412,6 +413,22 @@ def plot_va_tempos(n_tracks, annot_type="mean"):
             plot_tempo_hist(maxs[label][:n_tracks])
             pbar.update()
             i += 1
+    plt.savefig(os.path.join(RUNTIME_DIR, f"va_{annot_type}-tempo.pdf"))
+
+def plot_scatter(feature_name, limit=None, x_max=float("inf")):
+    from sklearn.utils import shuffle
+    all_feats = get_features()
+    feats = all_feats.loc[all_feats.loc[:, feature_name] < x_max, feature_name]
+    annots = get_annotations().loc[all_feats.loc[:, feature_name] < x_max]
+    feats, annots = shuffle(feats, annots)
+    plt.figure(figsize=(15,10))
+    i = 1
+    for label in tqdm(annots.columns, leave=False):
+        plt.subplot(2,2,i)
+        plt.title(f"scatter for {label}")
+        plt.scatter(feats.iloc[:limit], annots.iloc[:limit].loc[:, label])
+        i += 1
+    plt.savefig(os.path.join(RUNTIME_DIR, f"scatter-{feature_name}.pdf"))
 
 
 # -
@@ -421,6 +438,10 @@ def plot_va_tempos(n_tracks, annot_type="mean"):
 with open("features.txt") as fin:
     print(fin.read())
 
+# ### Scatters
+
+plot_scatter("pcm_fftMag_spectralHarmonicity_sma_amean", x_max=2)
+
 # ### Songs tempo
 
 plot_va_tempos(100)
@@ -429,7 +450,7 @@ plot_va_tempos(100)
 
 plot_va_distributions("spectral_flatness", 50, np.linspace(-0.01, 0.05, 100))
 
-plot_va_distributions("chroma_stft2", 50, np.linspace(-0.2, 1, 100))
+plot_va_distributions("chroma_stft2", 50, np.linspace(-0.2, 1, 100), annot_type="std")
 
 plot_va_distributions("pcm_RMSenergy_sma", 20, np.linspace(0, 0.4, 100))
 
@@ -467,32 +488,32 @@ features_to_select = [
     "harmonic",
     "percussive",
     "tempo",
-    "spectral_contrast",
-    "spectral_bandwidth",
-    "tempogram",
-    "F0final",
-    "RMSenergy",
-    "zcr",
-    "spectralRollOff",
-    "spectralFlux",
-    "spectralCentroid",
-    "spectralEntropy",
-    "spectralVariance",
-    "spectralSkewness",
-    "spectralKurtosis",
-    "spectralSlope",
-    "psySharpness",
-    "spectralHarmonicity",
-    "mfcc",
-    "voicingFinalUnclipped",
-    "jitterLocal",
-    "jitterDDP",
-    "shimmerLocal",
-    "logHNR",
-    "audspec_lengthL1norm",
-    "audspecRasta_lengthL1norm",
-    "Rfilt",
-    "fftMag_fband",
+#    "spectral_contrast",
+#    "spectral_bandwidth",
+#    "tempogram",
+#    "F0final",
+#    "RMSenergy",
+#    "zcr",
+#    "spectralRollOff",
+#    "spectralFlux",
+#    "spectralCentroid",
+#    "spectralEntropy",
+#    "spectralVariance",
+#    "spectralSkewness",
+#    "spectralKurtosis",
+#    "spectralSlope",
+#    "psySharpness",
+#    "spectralHarmonicity",
+#    "mfcc",
+#    "voicingFinalUnclipped",
+#    "jitterLocal",
+#    "jitterDDP",
+#    "shimmerLocal",
+#    "logHNR",
+#    "audspec_lengthL1norm",
+#    "audspecRasta_lengthL1norm",
+#    "Rfilt",
+#    "fftMag_fband",
 ]
 
 def feature_filter(featname):
@@ -560,6 +581,8 @@ print(f"shape of feats: {feats.shape}\nshape of annots: {annots.shape}")
 annots = pd.DataFrame(preprocessing.scale(annots), columns=annots.columns, index=annots.index)
 # -
 
+feats
+
 # Split the dataset in training set and testing set.
 
 # +
@@ -580,7 +603,7 @@ for label in annots.columns:
         # --- standardize features ---
         preprocessing.StandardScaler(),
         # --- filter out features ---
-        feature_selection.VarianceThreshold(1 - 1e-15),
+        #feature_selection.VarianceThreshold(1 - 1e-15),
         feature_selection.SelectKBest(feature_selection.f_regression, 50),
         verbose = 1
     )
