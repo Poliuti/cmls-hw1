@@ -463,7 +463,7 @@ with open("features.txt") as fin:
 
 # ### Scatters
 
-plot_scatter("pcm_fftMag_spectralHarmonicity_sma_amean")
+plot_scatter("chroma_stft2_kurtosis")
 
 # ### Songs tempo
 
@@ -540,7 +540,8 @@ features_to_select = [
 ]
 
 def feature_filter(featname):
-    return any((sel in featname for sel in features_to_select)) and not "_sma_de" in featname
+    return True # temporary bypass
+    #return any((sel in featname for sel in features_to_select)) and not "_sma_de" in featname
 
 def manual_feature_filter(features):
     """receives a pandas matrix of features and returns a pandas matrix of filtered features"""
@@ -589,7 +590,7 @@ def run_cross_validation(init_reg, params, feats_train, annots_train, feat_proce
     regs = dict()
     for label in tqdm(annots_train.columns, leave=False):
         selected_feats_train = feat_processor[label].transform(feats_train)
-        reg = model_selection.GridSearchCV(init_reg, params, n_jobs=-1, cv=10, refit=False, verbose=1)
+        reg = model_selection.GridSearchCV(init_reg, params, n_jobs=-1, cv=10, refit=False, verbose=2)
         reg.fit(feats_train, annots_train.loc[:, label])
         print(reg.best_params_, file=sys.stderr)
         regs[label] = type(init_reg)(**reg.best_params_)
@@ -612,7 +613,8 @@ for label in annots.columns:
         preprocessing.StandardScaler(),
         # --- filter out features ---
         #feature_selection.VarianceThreshold(1 - 1e-15),
-        feature_selection.SelectKBest(feature_selection.f_regression, 50),
+        feature_selection.SelectKBest(feature_selection.f_regression, 150),
+        feature_selection.RFE(LinearSVR(), 50),
         verbose = 1
     )
     feat_processor[label] = pl.fit(feats_train, annots_train.loc[:, label])
@@ -650,16 +652,12 @@ linear_predictions = run_regression(lin_reg, feats_train, feats_test, annots_tra
 
 # Run cross-validation to find best parameters.
 
-# +
-# svm_param_grid = (
-#   {'C': (1, 10, 100, 1000), 'kernel': ('linear',)},
-#   {'C': (1, 10, 100, 1000), 'gamma': (0.001, 0.0001), 'kernel': ('rbf',)},
-# )
-# svm_reg = run_cross_validation(SVR(), svm_param_grid, feats_train, annots_train, feat_processor)
-
-svm_reg = SVR()
+svm_param_grid = (
+   {'kernel': ('linear', 'poly', 'rbf', 'sigmoid', 'precomputed')},
+)
+svm_reg = run_cross_validation(SVR(), svm_param_grid, feats_train, annots_train, feat_processor)
+#svm_reg = SVR()
 cross_validation_score(svm_reg, feats_train, annots_train, feat_processor)
-# -
 
 # Save final predictions for later evaluation.
 
