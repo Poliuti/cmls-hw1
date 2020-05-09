@@ -681,30 +681,43 @@ kn_predictions = run_regression(kn_reg, feats_train, feats_test, annots_train, f
 # +
 from sklearn import metrics
 
-def get_metrics(prediction, ground_truth):
-    print("MSE:     ", metrics.mean_squared_error(ground_truth, prediction))
-    print("R² score:", metrics.r2_score(ground_truth, prediction))
+def print_metrics(predictions):
+    for label in predictions.columns:
+        gtru = annots_test.loc[:, label]
+        pred = predictions.loc[:, label]
+        print(f"=== metrics for {label} ===")
+        print("MSE:     ", metrics.mean_squared_error(gtru, pred))
+        print("R² score:", metrics.r2_score(gtru, pred))
+        print()
+
+def plot_results(predictions):
+    plt.figure(figsize=(15,10))
+    i = 1
+    for label in predictions.columns:
+        pred = predictions.loc[:, label]
+        gtru = annots_test.loc[:, label]
+        plt.subplot(2,2,i)
+        plt.title(f"scatter for {label}")
+        plt.scatter(pred, gtru)
+        i += 1
 
 
 # -
 
 # ## Metrics for Linear regression
 
-for label in annots.columns:
-    print(f"=== metrics for {label} ===")
-    get_metrics(linear_predictions.loc[:, label], annots_test.loc[:, label])
-    print()
+print_metrics(linear_predictions)
+
+plot_results(linear_predictions)
 
 # ## Metrics for SVM regression
 
-for label in annots.columns:
-    print(f"=== metrics for {label} ===")
-    get_metrics(svm_predictions.loc[:, label], annots_test.loc[:, label])
-    print()
+print_metrics(svm_predictions)
+
+plot_results(svm_predictions)
 
 # ## Metrics for KN regression
 
-for label in annots.columns:
-    print(f"=== metrics for {label} ===")
-    get_metrics(kn_predictions.loc[:, label], annots_test.loc[:, label])
-    print()
+print_metrics(kn_predictions)
+
+plot_results(kn_predictions)
