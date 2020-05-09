@@ -279,7 +279,7 @@ def get_provided_features(track_ids, pool=None):
 
 # Merge extracted features with provided features and iterate over dataset.
 
-def get_features(selected_tracks=None, length=None, filt=lambda x: True):
+def get_features(selected_tracks=None, length=None):
     """iterates over the dataset and return a pandas matrix of features for all/selected tracks"""
     ## helper functions
     def concat_features_with_lock(lrosa_lock, track_id):
@@ -296,7 +296,7 @@ def get_features(selected_tracks=None, length=None, filt=lambda x: True):
         provided  = get_provided_features(selected_tracks, p)
         all_feats = (provided.result()).join(computed.result())
         # NB: the upper limit is set because we are only interested to the `2-2000` range.
-        return all_feats.loc[:2000, filter(filt, all_feats.columns)]
+        return all_feats.loc[:2000]
 
 
 # +
@@ -313,20 +313,46 @@ def get_annotations(length=None):
 get_annotations(length=10)
 
 
-# ## Feature Visualization
+# ## Split Dataset
+
+from sklearn import model_selection, preprocessing
+
+# Pick features and annotations from the dataset.
+
+# +
+N       = 2000 # actual number of tracks is lower, but it's ok to provide a higher number
+feats   = get_features(length=N)
+annots  = get_annotations(length=N)
+print(f"shape of feats: {feats.shape}\nshape of annots: {annots.shape}")
+
+# standardize annotations
+annots = pd.DataFrame(preprocessing.scale(annots), columns=annots.columns, index=annots.index)
+# -
+
+# Split dataset in training set and testing set.
+
+# +
+(feats_train, feats_test,
+ annots_train, annots_test) = model_selection.train_test_split(feats, annots)
+
+print("Training set:", feats_train.index)
+print("Testing set:", feats_test.index)
+# -
+
+# # Feature Visualization
 
 import matplotlib.pyplot as plt
 
 # ### Annotations splitting
 
 # +
-maxs = dict()
-mins = dict()
+annot_maxs = dict()
+annot_mins = dict()
 
-for label in get_annotations().columns:
-    annot = get_annotations().loc[:, label]
-    maxs[label] = annot.loc[annot >= annot.mean()].sort_values(ascending=False).index
-    mins[label] = annot.loc[annot < annot.mean()].sort_values(ascending=True).index
+for label in annots_train.columns:
+    annot = annots_train.loc[:, label]
+    annot_maxs[label] = annot.loc[annot >= annot.mean()].sort_values(ascending=False).index
+    annot_mins[label] = annot.loc[annot < annot.mean()].sort_values(ascending=True).index
 
 
 # -
@@ -374,11 +400,11 @@ def plot_va_distributions(feature_name, n_tracks, x_axis=None, annot_type="mean"
         for label in [f"valence_{annot_type}", f"arousal_{annot_type}"]:
             plt.subplot(2,2,i*2-1)
             plt.title(f"tracks with min. {label}")
-            plot_feature_distribution(mins[label][:n_tracks], feature_name, x_axis)
+            plot_feature_distribution(annot_mins[label][:n_tracks], feature_name, x_axis)
             pbar.update()
             plt.subplot(2,2,i*2)
             plt.title(f"tracks with max. {label}")
-            plot_feature_distribution(maxs[label][:n_tracks], feature_name, x_axis)
+            plot_feature_distribution(annot_maxs[label][:n_tracks], feature_name, x_axis)
             pbar.update()
             i += 1
     plt.savefig(os.path.join(RUNTIME_DIR, f"va_{annot_type}-{feature_name}-dists.pdf"))
@@ -390,11 +416,11 @@ def plot_va_evolution(feature_name, n_tracks, time_slice=slice(10,50), annot_typ
         for label in [f"valence_{annot_type}", f"arousal_{annot_type}"]:
             plt.subplot(2,2,i*2-1)
             plt.title(f"tracks with min. {label}")
-            plot_feature_evolution(mins[label][:n_tracks], feature_name, time_slice)
+            plot_feature_evolution(annot_mins[label][:n_tracks], feature_name, time_slice)
             pbar.update()
             plt.subplot(2,2,i*2)
             plt.title(f"tracks with max. {label}")
-            plot_feature_evolution(maxs[label][:n_tracks], feature_name, time_slice)
+            plot_feature_evolution(annot_maxs[label][:n_tracks], feature_name, time_slice)
             pbar.update()
             i += 1
     plt.savefig(os.path.join(RUNTIME_DIR, f"va_{annot_type}-{feature_name}-time.pdf"))
@@ -406,21 +432,18 @@ def plot_va_tempos(n_tracks, annot_type="mean"):
         for label in [f"valence_{annot_type}", f"arousal_{annot_type}"]:
             plt.subplot(2,2,i*2-1)
             plt.title(f"tracks with min. {label}")
-            plot_tempo_hist(mins[label][:n_tracks])
+            plot_tempo_hist(annot_mins[label][:n_tracks])
             pbar.update()
             plt.subplot(2,2,i*2)
             plt.title(f"tracks with max. {label}")
-            plot_tempo_hist(maxs[label][:n_tracks])
+            plot_tempo_hist(annot_maxs[label][:n_tracks])
             pbar.update()
             i += 1
     plt.savefig(os.path.join(RUNTIME_DIR, f"va_{annot_type}-tempo.pdf"))
 
 def plot_scatter(feature_name, limit=None, x_max=float("inf")):
-    from sklearn.utils import shuffle
-    all_feats = get_features()
-    feats = all_feats.loc[all_feats.loc[:, feature_name] < x_max, feature_name]
-    annots = get_annotations().loc[all_feats.loc[:, feature_name] < x_max]
-    feats, annots = shuffle(feats, annots)
+    feats = feats_train.loc[feats_train.loc[:, feature_name] < x_max, feature_name]
+    annots = annots_train.loc[feats_train.loc[:, feature_name] < x_max]
     plt.figure(figsize=(15,10))
     i = 1
     for label in tqdm(annots.columns, leave=False):
@@ -440,7 +463,7 @@ with open("features.txt") as fin:
 
 # ### Scatters
 
-plot_scatter("pcm_fftMag_spectralHarmonicity_sma_amean", x_max=2)
+plot_scatter("pcm_fftMag_spectralHarmonicity_sma_amean")
 
 # ### Songs tempo
 
@@ -519,6 +542,10 @@ features_to_select = [
 def feature_filter(featname):
     return any((sel in featname for sel in features_to_select)) and not "_sma_de" in featname
 
+def manual_feature_filter(features):
+    """receives a pandas matrix of features and returns a pandas matrix of filtered features"""
+    return features.loc[:, filter(feature_filter, features.columns)]
+
 
 # -
 
@@ -569,37 +596,18 @@ def run_cross_validation(init_reg, params, feats_train, annots_train, feat_proce
     return regs
 # -
 
-# Extract N tracks from the dataset.
-
-# +
-N       = 2000
-feats   = get_features(length=N, filt=feature_filter)
-annots  = get_annotations(length=N)
-print(f"shape of feats: {feats.shape}\nshape of annots: {annots.shape}")
-
-# standardize annotations
-annots = pd.DataFrame(preprocessing.scale(annots), columns=annots.columns, index=annots.index)
-# -
-
-feats
-
-# Split the dataset in training set and testing set.
-
-# +
-(feats_train, feats_test,
- annots_train, annots_test) = model_selection.train_test_split(feats, annots)
-
-print("Training set:", feats_train.index)
-print("Testing set:", feats_test.index)
-# -
-
-# Preproces features by scaling them to have $\bar{X} = 1$ and $\sigma^2_X = 1$. Then filter out unneeded or redundant features.
+# Preprocess features:
+#  - first we manually discard unneeded features (this is done first because we still have a pandas matrix here)
+#  - then we scale them to have $\bar{X} = 1$ and $\sigma^2_X = 1$
+#  - finally we filter out unneeded or redundant features using automatic feature selection tools.
 
 # +
 feat_processor = dict()
 
 for label in annots.columns:
     pl = make_pipeline(
+        # --- manual feature selection ---
+        preprocessing.FunctionTransformer(manual_feature_filter),
         # --- standardize features ---
         preprocessing.StandardScaler(),
         # --- filter out features ---
