@@ -299,7 +299,9 @@ def get_features(selected_tracks=None, length=None):
         return all_feats.loc[:2000]
 
 
-get_features(length=10)
+fff = get_features()
+print(f"Any value is NaN? {fff.isnull().values.any()}")
+print(f"Any value is Infinite? {not np.isfinite(fff.to_numpy()).all()}")
 
 
 # ## Extract Annotations
@@ -309,7 +311,9 @@ def get_annotations(length=None):
     with open(os.path.join(DATASET_PATH, "annotations.csv")) as fin:
         return pd.read_csv(fin, header=0, index_col=0, sep=",\s*", engine="python").iloc[:length]
 
-get_annotations(length=10)
+aaa = get_annotations()
+print(f"Any value is NaN? {aaa.isnull().values.any()}")
+print(f"Any value is Infinite? {not np.isfinite(aaa.to_numpy()).all()}")
 
 
 # ## Split Dataset
@@ -631,7 +635,7 @@ for label in annots.columns:
         # --- standardize features ---
         preprocessing.StandardScaler(),
         # --- filter out features ---
-        #feature_selection.VarianceThreshold(1 - 1e-15),
+        feature_selection.VarianceThreshold(1 - 1e-15),
         feature_selection.SelectKBest(feature_selection.f_regression, 150),
         #feature_selection.RFE(LinearSVR(), 50),
         verbose = 1
@@ -640,6 +644,7 @@ for label in annots.columns:
     # print some report
     n_before = feats_train.iloc[0:1].shape[1]
     n_after  = pl.transform(feats_train.iloc[0:1]).shape[1]
+    print(f"checking if all values are finite and not NaN: {np.isfinite(pl.transform(feats)).all()}")
     print(f"{'-'*3}\nfeat_processor for {label} reduces features from {n_before} to {n_after}\n{'-'*80}")
 # -
 
@@ -656,7 +661,7 @@ lin_param_grid = (
     }
 )
 #lin_reg = run_cross_validation(SGDRegressor(), lin_param_grid, feats_train, annots_train, feat_processor)
-lin_reg = RidgeCV()
+lin_reg = LinearRegression()
 
 cross_validation_score(lin_reg, feats_train, annots_train, feat_processor)
 
