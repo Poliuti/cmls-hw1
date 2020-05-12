@@ -647,19 +647,16 @@ for label in annots.columns:
 
 # Run cross-validation to find best parameters.
 
-# +
 lin_param_grid = (
     {
         "loss": ("epsilon_insensitive",),
         "alpha": (1e-4, 1e-3, 1e-2),
         "epsilon": (1e-3, 1e-2, 1e-1),
-#        "tol": (1e-4, 1e-3),
-#    }
-#)
+        "tol": (1e-4, 1e-3),
+    }
+)
 #lin_reg = run_cross_validation(SGDRegressor(), lin_param_grid, feats_train, annots_train, feat_processor)
-
-#lin_reg = RidgeCV()
-# -
+lin_reg = RidgeCV()
 
 cross_validation_score(lin_reg, feats_train, annots_train, feat_processor)
 
@@ -674,8 +671,8 @@ linear_predictions = run_regression(lin_reg, feats_train, feats_test, annots_tra
 svm_param_grid = (
    {'kernel': ('linear', 'poly', 'rbf', 'sigmoid', 'precomputed')},
 )
-svm_reg = run_cross_validation(SVR(), svm_param_grid, feats_train, annots_train, feat_processor)
-#svm_reg = SVR()
+#svm_reg = run_cross_validation(SVR(), svm_param_grid, feats_train, annots_train, feat_processor)
+svm_reg = SVR()
 cross_validation_score(svm_reg, feats_train, annots_train, feat_processor)
 
 # Save final predictions for later evaluation.
