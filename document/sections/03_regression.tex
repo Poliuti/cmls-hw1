@@ -1,1 +1,11 @@
-\section{Regression}
+\section{Regression} % descrizione di metodi di regressione, selezione feature e cross-validation
+Once features have been extracted, regression theory allow to predict a real value from a set of $N$ given inputs, where $N$ is the dimension of the features space. In this context, \textbf{Music Emotion Recognition} has been considered as a regression problem where two regressors are trained \textit{independently} for valence and arousal. So, the aim is to find two regressors  
+\[r_{V, A} \colon \R^{N} \to \R\]
+that minimize the mean squared error (\textit{MSE})
+\[ \epsilon = \frac{1}{N} \sum_{i =1}^{N} (y_i - r(\vec{x_i}))^2\]
+In particular, four regressors will be trained to predict the four-element vector
+\begin{center}
+[valence mean, valence std, arousal mean, arousal std]
+\end{center}
+Different regression models were used to find out which set of regressors best fitted data, such as Linear Regression, Support Vector Regression and K-Neighbors Regression. Performance evaluation was achieved by means of the metrics represented by $R^2$ and $MSE$ statistics. Linear regressor 
+
