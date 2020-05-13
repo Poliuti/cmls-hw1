@@ -3,10 +3,9 @@ In our work we employ the DEAM Dataset (\textit{MediaEval Database for Emotional
 
 The dataset consists of 2058 songs annotated with valence and arousal values both continuously (per-second) and over the whole song.
  The dataset from 2013 and 2014 contains annotations on 45 seconds excerpts extracted from random points in songs. Dataset from 2015 has annotations on full songs. Both the 45 seconds clips and full songs are provided in MPEG layer 3 (MP3) format.
-Averaged annotations have been generated with 2Hz sampling rate and in addition to the average, the standard deviation of the annotations is provided.\cite{soleymani2016deam}
+Averaged annotations have been generated with 2Hz sampling rate and in addition to the average, the standard deviation of the annotations is provided.~\cite{soleymani2016deam}
 
-In particular, our work is focused on the first 2000 songs (45 seconds excerpts),  on the averaged annotations of the dataset and on the features extracted from the music database, both features already given with the dataset and features extracted ex novo.\newline
-
+In particular, our work is focused on the first 2000 songs (45 seconds excerpts),  on the averaged annotations of the dataset and on the features extracted from the music database, both features already given with the dataset and features extracted ex novo.
 
 \subsection{Music database}
 
@@ -19,76 +18,50 @@ The music from the FMA was in rock, pop, soul, blues, electronic, classical, hip
 \subsection{Features from the dataset}
 
 A set of features, extracted by openSMILE\footnote{http://opensmile.sourceforge.net/} for 500ms window is provided with the dataset. 
+A list of the given features is reported:
 
-A list of the given features is reported:\newline
+\todo{maybe it's better to provide meaninful names or description}
 
-F0final
-
-voicingFinalUnclipped
-
-jitterLocal
-
-jitterDDP
-
-shimmerLocal
-
-logHNR
-
-audspec\_lengthL1norm
-
-audspecRasta\_lengthL1norm
-
-pcm\_RMSenergy
-
-pcm\_zcr
-
-audSpec\_Rfilt[0 \rightarrow 25]
-
-pcm\_fftMag\_fband250-650, pcm\_fftMag\_fband1000-4000
-
-pcm\_fftMag\_spectralRollOff25.0, pcm\_fftMag\_spectralRollOff50.0, 
-
-pcm\_fftMag\_spectralRollOff75.0, pcm\_fftMag\_spectralRollOff90.0
-
-pcm\_fftMag\_spectralFlux
-
-pcm\_fftMag\_spectralCentroid
-
-pcm\_fftMag\_spectralEntropy
-
-pcm\_fftMag\_spectralVariance
-
-pcm\_fftMag\_spectralSkewness
-
-pcm\_fftMag\_spectralKurtosis
-
-pcm\_fftMag\_spectralSlope
-
-pcm\_fftMag\_psySharpness
-
-pcm\_fftMag\_spectralHarmonicity
-
-pcm\_fftMag\_mfcc[1 \rightarrow 14] \newline
+\begin{itemize}
+	\item F0final
+	\item voicingFinalUnclipped
+	\item jitterLocal
+	\item jitterDDP
+	\item shimmerLocal
+	\item logHNR
+	\item audspec\_lengthL1norm
+	\item audspecRasta\_lengthL1norm
+	\item pcm\_RMSenergy
+	\item pcm\_zcr
+	\item audSpec\_Rfilt[0 $\rightarrow$ 25]
+	\item pcm\_fftMag\_fband250-650, pcm\_fftMag\_fband1000-4000
+	\item pcm\_fftMag\_spectralRollOff25.0, pcm\_fftMag\_spectralRollOff50.0, 
+	\item pcm\_fftMag\_spectralRollOff75.0, pcm\_fftMag\_spectralRollOff90.0
+	\item pcm\_fftMag\_spectralFlux
+	\item pcm\_fftMag\_spectralCentroid
+	\item pcm\_fftMag\_spectralEntropy
+	\item pcm\_fftMag\_spectralVariance
+	\item pcm\_fftMag\_spectralSkewness
+	\item pcm\_fftMag\_spectralKurtosis
+	\item pcm\_fftMag\_spectralSlope
+	\item pcm\_fftMag\_psySharpness
+	\item pcm\_fftMag\_spectralHarmonicity
+	\item pcm\_fftMag\_mfcc[1 $\rightarrow$ 14]
+\end{itemize}
 
 
 \subsection{Extracted features}
 
-Also a set of additional features is extracted  from the 45 seconds song excerpts using \emph{Librosa}\footnote{https://doi.org/10.5281/zenodo.3606573} and 5 different statistical moments are computed for each feature (mean, standard deviation, maximum, minimum and kurtosis):\newline
+Also a set of additional features is extracted  from the 45 seconds song excerpts using \emph{Librosa}\footnote{https://doi.org/10.5281/zenodo.3606573} and 5 different statistical moments are computed for each feature (mean, standard deviation, maximum, minimum and kurtosis):
 
-spectral flatness
-
-tonnetz
-
-chroma\_stft
-
-spectral\_contrast
-
-spectral\_bandwidth
-
-tempogram
-
-harmonic
-
-percussive
-
-tempo
+\begin{itemize}
+	\item spectral flatness
+	\item tonnetz
+	\item chroma\_stft
+	\item spectral\_contrast
+	\item spectral\_bandwidth
+	\item tempogram
+	\item harmonic
+	\item percussive
+	\item tempo
+\end{itemize}
