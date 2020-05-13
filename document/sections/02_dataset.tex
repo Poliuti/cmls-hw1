@@ -2,7 +2,7 @@
 In our work we employ the DEAM Dataset (\textit{MediaEval Database for Emotional Analysis in Music}) provided by the \textit{Swiss Center for Affective Sciences of the University of Geneva, Switzerland}.
 
 The dataset consists of 2058 songs annotated with valence and arousal values both continuously (per-second) and over the whole song.
- The dataset from 2013 and 2014 contains annotations on 45 seconds excerpts extracted from random points in songs. Dataset from 2015 has annotations on full songs. Both the 45 seconds clips and full songs are provided in MPEG layer 3 (MP3) format.
+The dataset from 2013 and 2014 contains annotations on 45 seconds excerpts extracted from random points in songs. Dataset from 2015 has annotations on full songs. Both the 45 seconds clips and full songs are provided in MPEG layer 3 (MP3) format.
 Averaged annotations have been generated with 2Hz sampling rate and in addition to the average, the standard deviation of the annotations is provided.~\cite{soleymani2016deam}
 
 In particular, our work is focused on the first 2000 songs (45 seconds excerpts),  on the averaged annotations of the dataset and on the features extracted from the music database, both features already given with the dataset and features extracted ex novo.
@@ -12,7 +12,7 @@ In particular, our work is focused on the first 2000 songs (45 seconds excerpts)
 The music database consists of royalty-free music from several sources: \textit{freemusicarchive.org} (FMA), \textit{jamendo.com}, and the \textit{medleyDB dataset} \cite{bittner2014medleydb}. There are 1,744 clips of 45 seconds from FMA and 58 full length songs, half of which come from medleyDB and another half from Jamendo.\cite{aljanaki2017developing}
 The provided 45 seconds excerpts have been all re-encoded to have the same sampling frequency (i.e, 44100Hz) and have been extracted from random (uniformly distributed) starting point in a given song.\cite{soleymani2016deam}
 
-The music from the FMA was in rock, pop, soul, blues, electronic, classical, hip-hop, international, experimental, folk, jazz, country and pop genres. The music from the MedleyDB dataset in addition had music in world and rap genres, and the music from Jamendo also had reggae music. For 2014 and 2015 data set, music have been manually checked and the files with bad recording quality or those containing speech or noise instead of music have been excluded. For each artist, have been selected no more than 5 songs to be included in the dataset. For medleyDB and Jamendo full-length songs, have been selected songs which had emotional variation in them, using an existing dynamic MER algorithm for filtering and manual final selection\cite{anna2015emotion}.\newline
+The music from the FMA was in rock, pop, soul, blues, electronic, classical, hip-hop, international, experimental, folk, jazz, country and pop genres. The music from the MedleyDB dataset in addition had music in world and rap genres, and the music from Jamendo also had reggae music. For 2014 and 2015 data set, music have been manually checked and the files with bad recording quality or those containing speech or noise instead of music have been excluded. For each artist, have been selected no more than 5 songs to be included in the dataset. For medleyDB and Jamendo full-length songs, have been selected songs which had emotional variation in them, using an existing dynamic MER algorithm for filtering and manual final selection\cite{anna2015emotion}.
 
 
 \subsection{Features from the dataset}
@@ -20,19 +20,24 @@ The music from the FMA was in rock, pop, soul, blues, electronic, classical, hip
 A set of features, extracted by openSMILE\footnote{http://opensmile.sourceforge.net/} for 500ms window is provided with the dataset. 
 A list of the given features is reported:
 
-\todo{maybe it's better to provide meaninful names or description}
+\todo{keep adding features descriptions}
 
 \begin{itemize}
-	\item F0final
-	\item voicingFinalUnclipped
-	\item jitterLocal
-	\item jitterDDP
-	\item shimmerLocal
-	\item logHNR
-	\item audspec\_lengthL1norm
-	\item audspecRasta\_lengthL1norm
-	\item pcm\_RMSenergy
-	\item pcm\_zcr
+	\item F0ﬁnal: the smoothed fundamental frequency contour
+	\item voicingFinalUnclipped: the voicing probability of the ﬁnal fundamental frequency candidate. Unclipped means, that it was not set to zero when is falls below the voicing threshold.
+
+	\item jitterLocal: the local (frame-to-frame) Jitter (pitch period length deviations)
+
+	\item jitterDDP: the diﬀerential frame-to-frame Jitter (the ‘Jitter of the Jitter’)
+
+	\item shimmerLocal: the local (frame-to-frame) Shimmer (amplitude deviations between pitch periods)
+	\item logHNR: 
+	\item audspec\_lengthL1norm: 
+	\item audspecRasta\_lengthL1norm: 
+	\item pcm\_RMSenergy: root-mean-square signal frame energy
+
+	\item pcm\_zcr: zero-crossing rate of time signal (frame-based)
+
 	\item audSpec\_Rfilt[0 $\rightarrow$ 25]
 	\item pcm\_fftMag\_fband250-650, pcm\_fftMag\_fband1000-4000
 	\item pcm\_fftMag\_spectralRollOff25.0, pcm\_fftMag\_spectralRollOff50.0, 
@@ -54,8 +59,10 @@ A list of the given features is reported:
 
 Also a set of additional features is extracted  from the 45 seconds song excerpts using \emph{Librosa}\footnote{https://doi.org/10.5281/zenodo.3606573} and 5 different statistical moments are computed for each feature (mean, standard deviation, maximum, minimum and kurtosis):
 
+\todo{keep adding features descriptions}
+
 \begin{itemize}
-	\item spectral flatness
+	\item Spectral flatness (or tonality coefficient): a measure to quantify how much noise-like a sound is, as opposed to being tone-like
 	\item tonnetz
 	\item chroma\_stft
 	\item spectral\_contrast
