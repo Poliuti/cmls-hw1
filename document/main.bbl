@@ -1,0 +1,37 @@
+\begin{thebibliography}{1}
+
+\bibitem{aljanaki2017developing}
+Anna Aljanaki, Yi-Hsuan Yang, and Mohammad Soleymani.
+\newblock Developing a benchmark for emotional analysis of music.
+\newblock {\em PloS one}, 12(3), 2017.
+
+\bibitem{anna2015emotion}
+Aljanaki Anna, Yang Yi-Hsuan, and Mohammad Soleymani.
+\newblock Emotion in music task at mediaeval 2015.
+\newblock In {\em Working Notes Proceedings of the MediaEval 2015 Workshop},
+  2015.
+
+\bibitem{bittner2014medleydb}
+Rachel~M Bittner, Justin Salamon, Mike Tierney, Matthias Mauch, Chris Cannam,
+  and Juan~Pablo Bello.
+\newblock Medleydb: A multitrack dataset for annotation-intensive mir research.
+\newblock In {\em ISMIR}, volume~14, pages 155--160, 2014.
+
+\bibitem{scikit-learn}
+F.~Pedregosa, G.~Varoquaux, A.~Gramfort, V.~Michel, B.~Thirion, O.~Grisel,
+  M.~Blondel, P.~Prettenhofer, R.~Weiss, V.~Dubourg, J.~Vanderplas, A.~Passos,
+  D.~Cournapeau, M.~Brucher, M.~Perrot, and E.~Duchesnay.
+\newblock Scikit-learn: Machine learning in {P}ython.
+\newblock {\em Journal of Machine Learning Research}, 12:2825--2830, 2011.
+
+\bibitem{soleymani2016deam}
+M~Soleymani, A~Aljanaki, and YH~Yang.
+\newblock Deam: Mediaeval database for emotional analysis in music, 2016.
+
+\bibitem{yang2008regression}
+Yi-Hsuan Yang, Yu-Ching Lin, Ya-Fan Su, and Homer~H Chen.
+\newblock A regression approach to music emotion recognition.
+\newblock {\em IEEE Transactions on audio, speech, and language processing},
+  16(2):448--457, 2008.
+
+\end{thebibliography}
