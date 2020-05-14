@@ -1,5 +1,6 @@
 dataset/
 run/
+venv/
 *.egg-info
 *.pyc
 *.ipynb
