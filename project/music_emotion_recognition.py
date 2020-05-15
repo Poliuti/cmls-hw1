@@ -2,6 +2,8 @@
 # # Initialization
 
 # ## Generic imports
+#
+# Other imports will be defined later on.
 
 # +
 import numpy as np
@@ -19,6 +21,8 @@ import sys
 # -
 
 # ## Download Dataset
+#
+# We readapted the provided dataset in a single zip file for easier extraction and naming.
 
 # +
 from requests import get as download
@@ -43,6 +47,8 @@ else:
 # -
 
 # ## Other stuff
+#
+# Create some directories for cache and runtime temporary data (mainly the plots) that we are not willing to track in `git`.
 
 # +
 RUNTIME_DIR = "./run/"
@@ -61,19 +67,22 @@ except FileExistsError:
 
 # # Model
 
-# ## Extract Features
+# ## Feature Extraction
 
 DATASET_PATH = "./dataset/"
 
-# Names of relevant features
+# Define here which features we want to extract with `librosa` and which statistical moments we are interested in.
+#
+# The way the `features_to_extract` dictionary works is like this: if a librosa function is provided under `librosa.mod.func`, then we `features_to_extract["mod"].append("func")`, so then we can use cool introspection to iterate over them.
 
-# for librosa
+# +
 features_to_extract = {
     "feature": ["spectral_flatness", "tonnetz", "chroma_stft", "spectral_contrast",
                 "spectral_bandwidth", "tempogram"],
     "effects": ["harmonic", "percussive"],
     "beat": ["tempo"]
 }
+
 feature_moments = {
     # pandas function → column name
     "mean": "amean",
@@ -82,8 +91,14 @@ feature_moments = {
     "min": "min",
     "kurtosis": "kurtosis",
 }
+# -
 
 # ### Caching functions
+#
+# > There are 2 hard problems in computer science: cache invalidation, naming things, and off-by-1 errors.
+# > — Leon Bambrick
+#
+# As feature extraction takes time I figured out some way to cache things. It's not smart, but it gets the job done.
 
 # +
 from inspect import getsource
@@ -91,6 +106,7 @@ from hashlib import sha1
 
 
 def get_cache_path(basename, *args):
+    """compute a cache path with `basename` and append a hash computed on `*args`"""
     to_bytes = lambda sth: (getsource(sth) if callable(sth) else repr(sth)).encode()
     h = sha1(b"".join(map(methodcaller("digest"), map(sha1, map(to_bytes, args))))).hexdigest()[:6]
     return os.path.join(CACHE_DIR, f"{basename}@{h}.csv")
@@ -108,7 +124,7 @@ def save_cache(fname, df):
 
 def get_cached_features(track_ids, cache_path, extractor_function, bar_desc, pool=None):
     """
-    iterate over `track_ids` and return a pandas matrix of features, as obtained by `extractor_function`,
+    iterate over `track_ids` and return a pandas DataFrame of features, as obtained by `extractor_function`,
     using caching mechanism and paralel extracting.
     a Future is returned instead if a PoolExecutor `pool` is provided.
     """
@@ -161,7 +177,9 @@ def get_cached_features(track_ids, cache_path, extractor_function, bar_desc, poo
 
 # -
 
-# ### Extract features using librosa
+# ### Librosa features
+#
+# This is the part dealing with extracting features with `librosa`, ideally this function won't be needed as we already have the cache.
 
 # +
 import warnings
@@ -170,6 +188,7 @@ def extract_raw_features(track_id, duration=60):
     """returns a dictionary of extracted time-level features for track `track_id`"""
     path = os.path.join(DATASET_PATH, "audio", f"{track_id}.mp3")
     with warnings.catch_warnings():
+        # drop warning for ".mp3" files
         warnings.simplefilter("ignore")
         y, sr = librosa.load(path, duration=duration)
     raw_features = dict()
@@ -181,6 +200,7 @@ def extract_raw_features(track_id, duration=60):
                 extra_opts = dict()
                 if featname == "tempogram":
                     extra_opts["win_length"] = 128
+                # use introspection to call the relevant function in librosa module
                 raw_features[featname] = getattr(getattr(librosa, feattype), featname)(y=y, **extra_opts)
                 pbar.update()
     return raw_features
@@ -199,10 +219,10 @@ def extract_features(track_id):
     """return a pandas series of extracted clip-level features for track `track_id`"""
     raw_features = extract_raw_features(track_id)
     features = list()
-    # extract relevant moments
+    # iterate over each matrix as returned by librosa
     for featname in raw_features.keys():
         feats = raw_features[featname]
-        # if we have a single row vector we can just drop the second dimension
+        # if we have a one-row matrix we can just drop the second dimension
         if len(feats.shape) > 1 and feats.shape[0] == 1:
             feats = feats.reshape(-1)
         # now, do we have a vector or a matrix?
@@ -227,7 +247,7 @@ def extract_features(track_id):
                     index=[f"{featname}{i}_{feature_moments[moment]}" for i in range(feats.shape[0])]
                 )
                 features.append(
-                    getattr(frame,moment)(axis=1) # time evolution is originally as →
+                    getattr(frame, moment)(axis=1) # time evolution in librosa is left→rigth
                 )
     # concat all features to a single pandas series
     sr = pd.concat(features)
@@ -239,10 +259,11 @@ def extract_features(track_id):
 #extract_features(10)
 # -
 
-# Use caching mechanism to avoid recomputing everything each time.
+# The actual function we care about, it encapsulates cache logic defined above in a black-box manner.
 
 def get_extracted_features(track_ids, pool=None):
-    """iterate over `track_ids` and return a pandas matrix of extracted features"""
+    """iterate over `track_ids` and return a pandas DataFrame of extracted clip-level features"""
+    # invalidate cache if we select other features to extract or change the way we condense them
     cache_path = get_cache_path("lrosa_features", features_to_extract, feature_moments, extract_features)
     return get_cached_features(track_ids, cache_path, extract_features, "get_extracted_features(...)", pool)
 
@@ -250,37 +271,45 @@ def get_extracted_features(track_ids, pool=None):
 get_extracted_features([10])
 
 
-# ### Load provided features
+# ### Provided features
+#
+# This part instead deals with processing the features which are provided in the dataset.
 
 # +
 @lru_cache(maxsize=None)
-def get_frame_level_features(track_id):
-    """returns a pandas matrix of all frame-level features for `track_id`"""
+def get_provided_frame_level_features(track_id):
+    """returns a pandas DataFrame of all provided frame-level features for `track_id`"""
     with open(os.path.join(DATASET_PATH, "features", f"{track_id}.csv")) as fin:
         return pd.read_csv(fin, header=0, index_col=0, sep=";", engine="c")
 
-def get_clip_level_features(track_id):
-    """converts frame-level features to relevant clip-level features"""
-    sr = get_frame_level_features(track_id).mean()
+def get_clip_level_features_from_provided(track_id):
+    """converts provided frame-level features to relevant clip-level features"""
+    sr = get_provided_frame_level_features(track_id).mean()
     sr.name = track_id
     return sr
 
 
 # -
 
-# Caching mechanism.
+# We can use some cache here as well to speed up things (instead of doing a lot of I/O over sparse .csv files).
 
 def get_provided_features(track_ids, pool=None):
-    """iterate over `track_ids` and return a pandas matrix of provided features"""
-    cache_path = get_cache_path("provided_features", get_clip_level_features)
-    return get_cached_features(track_ids, cache_path, get_clip_level_features,
+    """iterate over `track_ids` and return a pandas DataFrame of provided features"""
+    # invalidate cache if we change the way we condense the provided features
+    cache_path = get_cache_path("provided_features", get_clip_level_features_from_provided)
+    return get_cached_features(track_ids, cache_path, get_clip_level_features_from_provided,
                                "get_provided_features(...)", pool)
 
 
+get_provided_features([10])
+
+
+# ### Get final features
+#
 # Merge extracted features with provided features and iterate over dataset.
 
 def get_features(selected_tracks=None, length=None):
-    """iterates over the dataset and return a pandas matrix of features for all/selected tracks"""
+    """iterates over the dataset and return a pandas DataFrame of features for all/selected tracks"""
     ## helper functions
     def concat_features_with_lock(lrosa_lock, track_id):
         return pd.concat((get_clip_level_features(track_id), get_extracted_features(track_id, lock=lrosa_lock)))
@@ -299,36 +328,49 @@ def get_features(selected_tracks=None, length=None):
         return all_feats.loc[:2000]
 
 
+# +
 fff = get_features()
+
+# some checks on data consistency
 print(f"Any value is NaN? {fff.isnull().values.any()}")
 print(f"Any value is Infinite? {not np.isfinite(fff.to_numpy()).all()}")
 
 
-# ## Extract Annotations
+# -
+
+# ## Annotations Extraction
+#
+# Annotations are in a simple .csv file, so this part is more straightforward.
 
 def get_annotations(length=None):
-    """returns a pandas matrix of all the annotations of all tracks"""
+    """returns a pandas DataFrame of all the annotations of all tracks"""
     with open(os.path.join(DATASET_PATH, "annotations.csv")) as fin:
         return pd.read_csv(fin, header=0, index_col=0, sep=",\s*", engine="python").iloc[:length]
 
+# +
 aaa = get_annotations()
+
+# some checks on data consistency
 print(f"Any value is NaN? {aaa.isnull().values.any()}")
 print(f"Any value is Infinite? {not np.isfinite(aaa.to_numpy()).all()}")
+# -
 
 
-# ## Split Dataset
+# ## Dataset Splitting
+#
+# To avoid over-fitting, every further consideration must be done on the **training set**, therefore the first step is to split the dataset.
 
 from sklearn import model_selection, preprocessing
 
 # Pick features and annotations from the dataset.
 
 # +
-N       = 2000 # actual number of tracks is lower, but it's ok to provide a higher number
+N       = 2000 # actual number of tracks is lower (there are holes), but it's ok to provide a higher number
 feats   = get_features(length=N)
 annots  = get_annotations(length=N)
 print(f"shape of feats: {feats.shape}\nshape of annots: {annots.shape}")
 
-# standardize annotations
+# standardize annotations (not strictly needed, but it's worth a try)
 annots = pd.DataFrame(preprocessing.scale(annots), columns=annots.columns, index=annots.index)
 # -
 
@@ -343,10 +385,16 @@ print("Testing set:", feats_test.index)
 # -
 
 # # Feature Visualization
+#
+# In this part we play around with plotting feature distributions, etc...
 
 import matplotlib.pyplot as plt
 
 # ### Annotations splitting
+#
+# This was the first idea of visualizing things: separate tracks in two sets, a "high-annotation" set and a "low-annotation" set, and sort them accordingly (the first one descending, the second one ascending).
+#
+# Picking the first `N` tracks for e.g. "arousal_mean" means: *«select the first `N` tracks with highest `arousal_mean` and compare them to the first `N` tracks with lowest `arousal_mean`.»*
 
 # +
 annot_maxs = dict()
@@ -365,7 +413,7 @@ for label in annots_train.columns:
 # +
 def plot_feature_evolution(tracks, feature_name, time_slice=slice(None)):
     data = pd.concat((
-        get_frame_level_features(i).loc[time_slice, feature_name]
+        get_provided_frame_level_features(i).loc[time_slice, feature_name]
         for i in tqdm(tracks, leave=False)
         ), axis=1)
     plt.xlabel("time")
@@ -451,7 +499,9 @@ def plot_scatter(feature_name, limit=None, x_max=float("inf")):
     i = 1
     for label in tqdm(annots.columns, leave=False):
         plt.subplot(2,2,i)
-        plt.title(f"scatter for {label}")
+        #plt.title(f"scatter for {label}")
+        plt.xlabel(feature_name)
+        plt.ylabel(label)
         plt.scatter(feats.iloc[:limit], annots.iloc[:limit].loc[:, label])
         i += 1
     plt.savefig(os.path.join(RUNTIME_DIR, f"scatter-{feature_name}.pdf"))
@@ -459,18 +509,22 @@ def plot_scatter(feature_name, limit=None, x_max=float("inf")):
 
 # -
 
-# ### Feature names
+# ### Provided-Feature names
+#
+# We manually opened a .csv file of provided features and copied the feature names in a .txt file, showing them here:
 
 with open("features.txt") as fin:
     print(fin.read())
 
 # ### Scatters
+#
+# A better way to visualize features might be to plot feature-vs-annotation scatters.
 
 plot_scatter("pcm_fftMag_mfcc_sma[1]_amean")
 
 # ### Songs tempo
 
-plot_va_tempos(100)
+plot_va_tempos(50)
 
 # ### Feature distributions
 
@@ -490,7 +544,7 @@ plot_va_distributions("pcm_zcr_sma", 25, np.linspace(0, 0.15, 100))
 
 # ### Feature time-evolution
 
-plot_va_evolution("pcm_zcr_sma_amean", 10, annot_type="mean")
+plot_va_evolution("pcm_zcr_sma_amean", 10, annot_type="mean", time_slice=slice(None))
 
 # # Regression
 
@@ -505,6 +559,10 @@ from sklearn.neighbors import KNeighborsRegressor
 # -
 
 # ## Preliminary manual feature selection
+
+# We have a Pipeline later on that select features based on this dictionary. In particular we select different features depending on the annotation to be predicted.
+#
+# e.g. a given feature `fullname_for_featX_with_suffix` for `valence_mean` is **not discarded** if `featX` (or any other substring) is listed among `features_to_select["valence_mean"]"` or `features_to_select["always"]`.
 
 # +
 features_to_select = {
@@ -528,13 +586,13 @@ features_to_select = {
         "psySharpness",
     ],
     "arousal_std": [
-        # nada
+        # seems like nothing is useful
     ],
     "always": [
         # -- provided --
         "logHNR",
         "zcr",
-        #"Rfilt", # unsure from here ↓
+        #"Rfilt", # unsure about these ↓
         #"fftMag_fband",
         "spectralRollOff",
         "spectralCentroid",
@@ -543,7 +601,7 @@ features_to_select = {
         #"spectralSkewness",
         #"spectralKurtosis",
         "spectralSlope",
-        "mfcc",
+        "mfcc", # to here ↑
         # -- librosa --
         "tonnetz",
         "chroma",
@@ -565,7 +623,7 @@ def feature_filter(annot_name):
     return real_filter
 
 def manual_feature_filter(annot_name):
-    """receives a pandas matrix of features and returns a pandas matrix of filtered features"""
+    """given a pandas DataFrame of features, returns a pandas DataFrame of filtered features"""
     def real_filter(features):
         return features.loc[:, filter(feature_filter(annot_name), features.columns)]
     return real_filter
@@ -575,10 +633,15 @@ def manual_feature_filter(annot_name):
 
 # ## Preparation
 
-# Common functions for regression training, prediction, and cross-validation.
+# Common functions for regression training, prediction, and cross-validation. With these functions we take care of iterating over all four annotations and output back predictions in a pandas `DataFrame` (otherwise we would get just `numpy.ndarray`).
 
 # +
 def reg_to_regs(regs, keys):
+    """
+    given a regressor object, clone it four times in order to have four independent
+    regressors for each annotation to be predicted. This is mostly useful in the case of regressors
+    which include cross-validation inside, e.g. `RidgeCV`.
+    """
     if type(regs) == dict:
         return regs
     reg = regs
@@ -588,6 +651,7 @@ def reg_to_regs(regs, keys):
     return regs
 
 def run_regression(regs, feats_train, feats_test, annots_train, feat_processor):
+    """fit regressor (or regressor dictionary, if already distinct) to data and return predictions"""
     regs = reg_to_regs(regs, annots_train.columns)
     predictions = pd.DataFrame()
     for label in tqdm(annots_train.columns, leave=False):
@@ -599,9 +663,11 @@ def run_regression(regs, feats_train, feats_test, annots_train, feat_processor):
         pred = pd.Series(regs[label].predict(selected_feats_test), feats_test.index)
         pred.name = label
         predictions = predictions.join(pred, how="right")
+    predictions.name = type(next(iter(regs.values()))).__name__
     return predictions
 
 def cross_validation_score(regs, feats_train, annots_train, feat_processor):
+    """print cross-validation scores for regressor (or regressor dictionary, if already distinct)"""
     regs = reg_to_regs(regs, annots_train.columns)
     for label in tqdm(annots_train.columns, leave=False):
         selected_feats_train = feat_processor[label].transform(feats_train)
@@ -610,6 +676,8 @@ def cross_validation_score(regs, feats_train, annots_train, feat_processor):
         print(f"R² score: {scores.mean() :5.2f} (± {scores.std() * 2 :4.2f})  [{label}]")
 
 def run_cross_validation(init_reg, params, feats_train, annots_train, feat_processor, force=False):
+    """perform grid-search to find best parameters for `init_reg` and
+       return the best four regressors found in a dictionary annot_name → reg_obj"""
     regs = dict()
     for label in tqdm(annots_train.columns, leave=False):
         selected_feats_train = feat_processor[label].transform(feats_train)
@@ -621,9 +689,9 @@ def run_cross_validation(init_reg, params, feats_train, annots_train, feat_proce
 # -
 
 # Preprocess features:
-#  - first we manually discard unneeded features (this is done first because we still have a pandas matrix here)
-#  - then we scale them to have $\bar{X} = 1$ and $\sigma^2_X = 1$
-#  - finally we filter out unneeded or redundant features using automatic feature selection tools.
+#  - First we manually discard unneeded features. This is done first because we still have a pandas `DataFrame` at this stage, otherwise we would not be able to read feature names.
+#  - Then we scale them to have $\bar{X} = 1$ and $\sigma^2_X = 1$.
+#  - Finally we filter out unneeded or redundant features using automatic feature selection tools.
 
 # +
 feat_processor = dict()
@@ -696,6 +764,8 @@ cross_validation_score(kn_reg, feats_train, annots_train, feat_processor)
 kn_predictions = run_regression(kn_reg, feats_train, feats_test, annots_train, feat_processor)
 
 # # Final Evaluation
+#
+# We check this stage at last, once we are satisfied with the previous cross-validation scores and cannot find any way to enhance them. We plot some scatters as well to visualize the predictions against the ground truth for each annotation.
 
 # +
 from sklearn import metrics
@@ -716,9 +786,12 @@ def plot_results(predictions):
         pred = predictions.loc[:, label]
         gtru = annots_test.loc[:, label]
         plt.subplot(2,2,i)
-        plt.title(f"scatter for {label}")
+        plt.title(f"comparison for {label}")
+        plt.xlabel("predictions")
+        plt.ylabel("ground truth")
         plt.scatter(pred, gtru)
         i += 1
+    plt.savefig(os.path.join(RUNTIME_DIR, f"predictions-{predictions.name}.pdf"))
 
 
 # -

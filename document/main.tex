@@ -6,12 +6,15 @@
 \usepackage[T1]{fontenc}
 \usepackage{hyperref}
 \usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{graphicx}
 \usepackage{float}
+\usepackage{booktabs} % enhancement for tables
 \usepackage{todonotes}
-\usepackage{float}
-\usepackage{amssymb}
+
+% convenience
 \newcommand{\R}{\mathbb{R}}
+\DeclareUnicodeCharacter{B1}{$\pm$}
 
 \usepackage{listings}
 \lstset{language=python,
@@ -35,13 +38,14 @@ frame=lines
 \begin{document}
 
 	\maketitle
+
 	\input{sections/01_intro} % introduzione generale sul problema
 	\input{sections/02_dataset} % qui una descrizione del dataset, feature e annotations
 	\input{sections/03_regression} % descrizione di metodi di regressione, selezione feature e cross-validation
 	\input{sections/04_evaluation} % estrazione di metriche e valutazioni
 	\input{sections/05_conclusions} % conclusioni e sviluppi futuri
 
-\newpage
-\bibliographystyle{plain}
-\bibliography{bibliography.bib}
+	\bibliographystyle{plain}
+	\bibliography{bibliography}
+
 \end{document}

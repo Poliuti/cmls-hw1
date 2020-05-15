@@ -6,3 +6,7 @@
 *.out
 *.synctex*
 *.fdb_latexmk
+
+# ignore bibliography intermediate files
+*.blg
+*.bbl
