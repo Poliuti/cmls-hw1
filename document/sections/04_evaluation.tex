@@ -90,4 +90,34 @@ The sklearn library provides a function \texttt{GridSearchCV()} for automaticall
 
 The last stage consists in comparing the values predicted by the model, when the testing set is provided as input, against the true values of the annotations in the testing set. Metrics can be therefore extracted to measure the accuracy of the trained model against never seen data. As already mentioned, once the final testing is done, it is important to avoid going back to the model and make further tweaks, as this would lead to over-fitting.
 
+\begin{table}
+	\centering
+	\begin{tabular}{lcccc}
+		\toprule
+		& valence mean & valence std & arousal mean & arousal std \\
+		\midrule
+		Linear & \dots & \dots & \dots & \dots \\
+		SVR & \dots & \dots & \dots & \dots \\
+		K-neighbors & \dots & \dots & \dots & \dots \\
+		\bottomrule
+	\end{tabular}
+	\caption{Evaluation $R^2$-scores}
+	\label{table:eval-r2}
+\end{table}
+
+\begin{table}
+	\centering
+	\begin{tabular}{lcccc}
+		\toprule
+		& valence mean & valence std & arousal mean & arousal std \\
+		\midrule
+		Linear & \dots & \dots & \dots & \dots \\
+		SVR & \dots & \dots & \dots & \dots \\
+		K-neighbors & \dots & \dots & \dots & \dots \\
+		\bottomrule
+	\end{tabular}
+	\caption{Evaluation MSEs}
+	\label{table:eval-mse}
+\end{table}
+
 \todo{da finire}
