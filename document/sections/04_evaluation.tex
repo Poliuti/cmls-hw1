@@ -22,7 +22,7 @@ Given $N$ as the number of samples, it is mathematically computed as follows:
 Since it is a scale-dependent metric, it is important to contextualize it into the scale of reference (i.e. a MSE of 0.2 is worse in a domain ranging from 1 to 10 than in one ranging from 1 to 100).
 
 \paragraph{$R^2$-score}
-The coefficient of determination is a measure of ??? \todo{find wording}. Given $N$ as the number of samples, and $\bar{y}$ as the mean of the predicted values, it is mathematically computed as follows:
+The coefficient of determination is a measure of how well unseen samples are likely to be predicted by the model, and it represents the ratio between the variance of the predicted values and the variance that would be predicted by the model. Given $N$ as the number of samples, and $\bar{y}$ as the mean of the predicted values, it is mathematically computed as follows:
 
 \[
 	R^2(y, \hat{y}) = 1 - \frac{
@@ -41,11 +41,53 @@ It is a methodological error to evaluate metrics against the testing set and the
 
 One possible option to evaluate the model without using the testing set is to cut a separate sub-set from the training set, called \emph{validation set}, and compute the metrics against this one instead. The drawback, however, is that this option further reduces the training set usable size.
 
-A better approach consists in iteratively cutting a different small sub-set for validation from the training set, and collect the metrics about each possible cut (possibly, taking the mean and the standard deviation). In this way the whole training set can be used. This process is known as \emph{cross-validation}.
+A better approach consists in iteratively cutting a different small sub-set for validation from the training set, collect the metrics about each possible cut, and aggregate them in terms of mean and standard deviation (see figure~\ref{fig:kfolds}). This way, the whole training set can be used. This procedure is known as \emph{$k$-fold cross-validation}.
 
-Depending on the way of cutting \dots \todo{describe k-fold and insert figures}
+\begin{figure}
+	\centering
+	\includegraphics[width=0.5\linewidth]{assets/kfolds.png}
+	\caption{$k$-fold cross-validation example with $k=5$ \cite{sklearn-crossval}}
+	\label{fig:kfolds}
+\end{figure}
+
+The gathered metrics can effectively be used to evaluate the performance of the chosen regressors over the dataset. At this point, it is possible to tune the regression model (i.e. by changing the free parameters of the regressors) without the risk of over-fitting (see figure~\ref{fig:grid-search-workflow}).
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.5\linewidth]{assets/grid_search_workflow.png}
+	\caption{Grid Search Workflow \cite{sklearn-crossval}}
+	\label{fig:grid-search-workflow}
+\end{figure}
+
+\subsubsection{First cross-validation test}
+
+At first, we computed the scores of the 3 chosen regressors, \texttt{LinearRegression()}, \texttt{SVR()} and \texttt{KNeighborsRegressor(10, "distance")}, and we obtained the values in table~\ref{table:cross-scores}. It can be observed that, even after some kind of feature selection (both manual and automatic), no regressor could obtain a significant positive score for the values of "valence std" and "arousal std", which arises a problem on the dataset \todo{find a way to explain this part}.
+
+\begin{table}
+	\centering
+	\begin{tabular}{lcccc}
+		\toprule
+		& valence mean & valence std & arousal mean & arousal std \\
+		\midrule
+		Linear & 0.46 ± 0.15 & -0.17 ± 0.17 & 0.45 ± 0.20 & -0.22 ± 0.53 \\
+		SVR & 0.49 ± 0.11 & -0.02 ± 0.09 & 0.51 ± 0.13 & -0.06 ± 0.09 \\
+		K-neighbors & 0.40 ± 0.08 & -0.06 ± 0.09 & 0.40 ± 0.16 & -0.07 ± 0.10 \\
+		\bottomrule
+	\end{tabular}
+	\caption{Cross-validation $R^2$-scores with 95\,\% confidence intervals}
+	\label{table:cross-scores}
+\end{table}
+
+
+\subsubsection{Automated cross-validation search}
+
+The sklearn library provides a function \texttt{GridSearchCV()} for automatically selecting the best parameters for a given estimator, based on a grid of possible combinations.
+
+\todo[inline]{una cross-validation vera con \texttt{GridSearchCV()} va fatta, altrimenti qui non possiamo scrivere nulla a riguardo}
 
 
 \subsection{Final Testing}
 
-Once the final testing is done, it is important to avoid going back to the model and make further tweaks, as this would lead to over-fitting, as already mentioned. \dots \todo{to finish}
+The last stage consists in comparing the values predicted by the model, when the testing set is provided as input, against the true values of the annotations in the testing set. Metrics can be therefore extracted to measure the accuracy of the trained model against never seen data. As already mentioned, once the final testing is done, it is important to avoid going back to the model and make further tweaks, as this would lead to over-fitting.
+
+\todo{da finire}
