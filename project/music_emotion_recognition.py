@@ -663,7 +663,7 @@ def run_regression(regs, feats_train, feats_test, annots_train, feat_processor):
         pred = pd.Series(regs[label].predict(selected_feats_test), feats_test.index)
         pred.name = label
         predictions = predictions.join(pred, how="right")
-    predictions.index.name = type(next(iter(regs.values()))).__name__
+    predictions.name = type(next(iter(regs.values()))).__name__
     return predictions
 
 def cross_validation_score(regs, feats_train, annots_train, feat_processor):
@@ -791,7 +791,7 @@ def plot_results(predictions):
         plt.ylabel("ground truth")
         plt.scatter(pred, gtru)
         i += 1
-    plt.savefig(os.path.join(RUNTIME_DIR, f"predictions-{predictions.index.name}.pdf"))
+    plt.savefig(os.path.join(RUNTIME_DIR, f"predictions-{predictions.name}.pdf"))
 
 
 # -
