@@ -2,7 +2,11 @@
 
 Once we refined our model at the best could, we evaluated it against never seen data, by comparing the values predicted by the model, when the testing set is provided as input, against the true values of the annotations in the testing set. As already mentioned in section~\ref{sec:cross-validation}, once the final testing is done, we avoided going back to the model and make further tweaks, as this would have led to over-fitting.
 
-For the final test we used the metrics of MSE and $R^2$-score (see section~\ref{sec:metrics}) and obtained the values reported in table~\ref{table:eval-metrics}. \todo{aggiungere considerazioni sui risultati}
+For the final test we used the metrics of MSE and $R^2$-score (see section~\ref{sec:metrics}) and obtained the values reported in table~\ref{table:eval-metrics}. To get an idea of the order of magnitude of the values, we need to consider that the valence and arousal ratings are in a nine point range scale from 1 to 9. Despite several attempts and tests with different combinations of features, our results are not still optimal, in particular the $R^2$-score associated to the regressors of the two standard deviations.
+
+We also extracted scatter plots comparing the predictions of each regressor against the true values of the testing set. In  figure~\ref{fig:eval-scatter} is depicted the case of \texttt{SVR}, which turned out to be the best model fitting the data. Also in these figures it could be seen that the values of the standard deviations have not any type of regularity or clustering. \todo{da finire}
+
+The motivation of our results could be related to the composition of the dataset and the fact that we used only the part containing static annotations. A dynamic approach in which we consider values related to temporal windows and not to the total length of the music piece could have given different results. \todo{ha senso?}
 
 \begin{table}[b]
 	\centering
@@ -32,8 +36,6 @@ For the final test we used the metrics of MSE and $R^2$-score (see section~\ref{
 	\label{table:eval-metrics}
 \end{table}
 
-We also extracted scatter plots comparing the predictions of each regressor against the true values of the testing set. In  figure~\ref{fig:eval-scatter} is depicted the case of \texttt{SVR}, which turned out to be the best model fitting the data.
-
 \begin{figure}
 	\centering
 	\includegraphics[width=\linewidth]{assets/predictions-scatter.pdf}
@@ -42,4 +44,3 @@ We also extracted scatter plots comparing the predictions of each regressor agai
 \end{figure}
 
 
-\todo{da finire}
