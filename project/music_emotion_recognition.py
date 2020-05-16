@@ -522,6 +522,12 @@ with open("features.txt") as fin:
 
 plot_scatter("pcm_fftMag_mfcc_sma[1]_amean")
 
+plot_scatter("pcm_zcr_sma_amean")
+
+plot_scatter("pcm_RMSenergy_sma_amean")
+
+plot_scatter("spectral_contrast2_amean")
+
 # ### Songs tempo
 
 plot_va_tempos(50)
@@ -544,7 +550,7 @@ plot_va_distributions("pcm_zcr_sma", 25, np.linspace(0, 0.15, 100))
 
 # ### Feature time-evolution
 
-plot_va_evolution("pcm_zcr_sma_amean", 10, annot_type="mean", time_slice=slice(None))
+plot_va_evolution("pcm_zcr_sma_amean", 10, annot_type="mean")
 
 # # Regression
 
@@ -718,9 +724,15 @@ for label in annots.columns:
 
 # ## Linear Regression
 
-# Run cross-validation to find best parameters.
+# Run cross-validation to evaluate the simples linear regressor.
 
-lin_param_grid = (
+lin_reg = LinearRegression()
+cross_validation_score(lin_reg, feats_train, annots_train, feat_processor)
+
+# Use `GridSearchCV` to optimize another type of linear regressor (Stochastic Gradient Descent) and see if it performs better.
+
+# +
+sgd_param_grid = (
     {
         "loss": ("epsilon_insensitive",),
         "alpha": (1e-4, 1e-3, 1e-2),
@@ -728,35 +740,104 @@ lin_param_grid = (
         "tol": (1e-4, 1e-3),
     }
 )
-#lin_reg = run_cross_validation(SGDRegressor(), lin_param_grid, feats_train, annots_train, feat_processor)
-lin_reg = LinearRegression()
+#sgd_reg = run_cross_validation(SGDRegressor(), lin_param_grid, feats_train, annots_train, feat_processor)
 
-cross_validation_score(lin_reg, feats_train, annots_train, feat_processor)
+# to avoid running it again, these are the best parameters we found on one particular run
+sgd_reg = {
+    "valence_mean": SGDRegressor(loss="epsilon_insensitive", alpha=1e-3, epsilon=1e-3, tol=1e-4),
+    "valence_std":  SGDRegressor(loss="epsilon_insensitive", alpha=1e-2, epsilon=1e-2, tol=1e-4),
+    "arousal_mean": SGDRegressor(loss="epsilon_insensitive", alpha=1e-2, epsilon=1e-3, tol=1e-3),
+    "arousal_std":  SGDRegressor(loss="epsilon_insensitive", alpha=1e-3, epsilon=1e-1, tol=1e-4),
+}
+# -
 
-# Save final predictions for later evaluation.
+cross_validation_score(sgd_reg, feats_train, annots_train, feat_processor)
 
-linear_predictions = run_regression(lin_reg, feats_train, feats_test, annots_train, feat_processor)
+# Last, compare with a third linear regressor with integrated cross-validation optimization.
+
+ridge_reg = RidgeCV()
+cross_validation_score(ridge_reg, feats_train, annots_train, feat_processor)
+
+# Use best linear regressor found and save final predictions for later evaluation.
+
+linear_predictions = run_regression(ridge_reg, feats_train, feats_test, annots_train, feat_processor)
 
 # ## SVM Regression
 
-# Run cross-validation to find best parameters.
+# Use `GridSearchCV` to optimize `NuSVR` over different kernels and free paramenters.
 
-svm_param_grid = (
-   {'kernel': ('linear', 'poly', 'rbf', 'sigmoid', 'precomputed')},
+# +
+nu_param_grid = (
+    {
+        "kernel": ("rbf", "sigmoid"),
+        "C": (0.1, 1, 10),
+        "nu": (0.25, 0.5, 0.75),
+    },
 )
-#svm_reg = run_cross_validation(SVR(), svm_param_grid, feats_train, annots_train, feat_processor)
-svm_reg = SVR()
-cross_validation_score(svm_reg, feats_train, annots_train, feat_processor)
+#nu_reg = run_cross_validation(NuSVR(), nu_param_grid, feats_train, annots_train, feat_processor)
 
-# Save final predictions for later evaluation.
+# to avoid running it again, these are the best parameters we found on one particular run
+nu_reg = {
+    "valence_mean": NuSVR(kernel="rbf", C=10,  nu=0.75),
+    "valence_std":  NuSVR(kernel="rbf", C=0.1, nu=0.25),
+    "arousal_mean": NuSVR(kernel="rbf", C=1,   nu=0.5),
+    "arousal_std":  NuSVR(kernel="rbf", C=0.1, nu=0.75),
+}
+# -
 
-svm_predictions = run_regression(svm_reg, feats_train, feats_test, annots_train, feat_processor)
+cross_validation_score(nu_reg, feats_train, annots_train, feat_processor)
+
+# Use `GridSearchCV` to optimize `SVR` over different kernels and free parameters.
+
+# +
+svr_param_grid = (
+   {
+       "kernel": ("rbf", "sigmoid"),
+       "C": (0.1, 1, 10),
+       "epsilon": (1e-3, 1e-2, 1e-1),
+       "tol": (1e-4, 1e-3),
+   },
+)
+#svr_reg = run_cross_validation(SVR(), svr_param_grid, feats_train, annots_train, feat_processor)
+
+# to avoid running it again, this are the best parameters we found on one particular run
+svr_reg = {
+    "valence_mean": SVR(kernel="rbf", C=10,  epsilon=0.1,  tol=1e-3),
+    "valence_std":  SVR(kernel="rbf", C=0.1, epsilon=0.1,  tol=1e-3),
+    "arousal_mean": SVR(kernel="rbf", C=0.1, epsilon=0.1,  tol=1e-4),
+    "arousal_std":  SVR(kernel="rbf", C=0.1, epsilon=0.01, tol=1e-3),
+}
+# -
+
+cross_validation_score(svr_reg, feats_train, annots_train, feat_processor)
+
+# Use best SVM regressor found and save final predictions for later evaluation.
+
+svm_predictions = run_regression(nu_reg, feats_train, feats_test, annots_train, feat_processor)
 
 # ## KN Regression
 
-# Run cross-validation to find the best parameters.
+# Use `GridSearchCV` to find best parameters for KN.
 
-kn_reg = KNeighborsRegressor(10, "distance")
+# +
+kn_param_grid = (
+    {
+        "weights": ("uniform", "distance"),
+        "n_neighbors": (10, 50, 60, 70, 80, 90, 100, 150, 200),
+        "n_jobs": (-1,),
+    },
+)
+#kn_reg = run_cross_validation(KNeighborsRegressor(), kn_param_grid, feats_train, annots_train, feat_processor)
+
+# to avoid running it again, this are the best parameters we found on one particular run
+kn_reg = {
+    "valence_mean": KNeighborsRegressors(weights="uniform", n_neighbors=80,  n_jobs=-1),
+    "valence_std":  KNeighborsRegressors(weights="uniform", n_neighbors=200, n_jobs=-1),
+    "arousal_mean": KNeighborsRegressors(weights="uniform", n_neighbors=80,  n_jobs=-1),
+    "arousal_std":  KNeighborsRegressors(weights="uniform", n_neighbors=150, n_jobs=-1),
+}
+# -
+
 cross_validation_score(kn_reg, feats_train, annots_train, feat_processor)
 
 # Save final predictions for later evaluation.
