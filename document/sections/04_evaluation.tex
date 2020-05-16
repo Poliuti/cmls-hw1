@@ -1,4 +1,4 @@
-\section{Evaluation}
+\section{Evaluation}\label{sec:evaluation}
 
 In order to avoid over-fitting and be able to evaluate a real-world scenario for our trained model, the dataset is initially split into a \emph{training set} and a \emph{testing set}.
 Consequently, every kind of consideration, analysis and training is made by using the training set only, to avoid information leaking from the testing set to the training set.
@@ -6,7 +6,7 @@ Consequently, every kind of consideration, analysis and training is made by usin
 A powerful tool that can help us understand how to choose the most suitable regressor for each target value is the \emph{cross-validation}, explained in the following.
 A final testing can be done at the very last stage, once we are satisfied with the result of the cross-validation and we are willing to test the obtained model against never seen data.
 
-\subsection{Metrics}
+\subsection{Metrics}\label{sec:metrics}
 
 In regression theory, there are two possible metrics that can be used to assess the accuracy of a regressor, which are different from the metrics used in classification theory, since the ground truth domain is continuous.
 
@@ -35,7 +35,7 @@ The coefficient of determination is a measure of how well unseen samples are lik
 It is a scale-invariant metric, therefore it is possible to compare $R^2$-scores across different domain ranges, however it is variance-dependent, so it might not be meaningful to compare it across different datasets.
 A value of $1$ indicates that the regressor perfectly predicts the ground truth. A value of $0$ indicates that the regressor always predicts the mean value $\bar{y}$, disregarding the input features. A negative value indicates that the regressor behaves arbitrarily worse than predicting a constant.
 
-\subsection{Cross-Validation}
+\subsection{Cross-Validation}\label{sec:cross-validation}
 
 It is a methodological error to evaluate metrics against the testing set and then use them to enhance the model, since this leaks information about the testing set which is supposed to be left unknown. This phenomenon is known as \emph{over-fitting} and should be avoided.
 
@@ -59,7 +59,8 @@ The gathered metrics can effectively be used to evaluate the performance of the 
 	\label{fig:grid-search-workflow}
 \end{figure}
 
-\subsubsection{First cross-validation test}
+
+\subsection{First tests}\label{sec:first-tests}
 
 At first, we computed the scores of the 3 chosen regressors, \texttt{LinearRegression()}, \texttt{SVR()} and \texttt{KNeighborsRegressor(10, "distance")}, and we obtained the values in table~\ref{table:cross-scores}. It can be observed that, even after some kind of feature selection (both manual and automatic), no regressor could obtain a significant positive score for the values of "valence std" and "arousal std", which arises a problem on the dataset \todo{find a way to explain this part}.
 
@@ -84,40 +85,3 @@ At first, we computed the scores of the 3 chosen regressors, \texttt{LinearRegre
 The sklearn library provides a function \texttt{GridSearchCV()} for automatically selecting the best parameters for a given estimator, based on a grid of possible combinations.
 
 \todo[inline]{una cross-validation vera con \texttt{GridSearchCV()} va fatta, altrimenti qui non possiamo scrivere nulla a riguardo}
-
-
-\subsection{Final Testing}
-
-The last stage consists in comparing the values predicted by the model, when the testing set is provided as input, against the true values of the annotations in the testing set. Metrics can be therefore extracted to measure the accuracy of the trained model against never seen data. As already mentioned, once the final testing is done, it is important to avoid going back to the model and make further tweaks, as this would lead to over-fitting.
-
-\begin{table}
-	\centering
-	\begin{tabular}{lcccc}
-		\toprule
-		& valence mean & valence std & arousal mean & arousal std \\
-		\midrule
-		Linear & \dots & \dots & \dots & \dots \\
-		SVR & \dots & \dots & \dots & \dots \\
-		K-neighbors & \dots & \dots & \dots & \dots \\
-		\bottomrule
-	\end{tabular}
-	\caption{Evaluation $R^2$-scores}
-	\label{table:eval-r2}
-\end{table}
-
-\begin{table}
-	\centering
-	\begin{tabular}{lcccc}
-		\toprule
-		& valence mean & valence std & arousal mean & arousal std \\
-		\midrule
-		Linear & \dots & \dots & \dots & \dots \\
-		SVR & \dots & \dots & \dots & \dots \\
-		K-neighbors & \dots & \dots & \dots & \dots \\
-		\bottomrule
-	\end{tabular}
-	\caption{Evaluation MSEs}
-	\label{table:eval-mse}
-\end{table}
-
-\todo{da finire}
