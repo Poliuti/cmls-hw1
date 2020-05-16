@@ -1,12 +1,3 @@
-# don't track LaTeX build files
-*.aux
-*.pdf
-*.log
-*.fls
-*.out
-*.synctex*
-*.fdb_latexmk
-
-# ignore bibliography intermediate files
-*.blg
-*.bbl
+# don't track LaTeX build files or bibliography intermediate files
+main.*
+!main.tex
