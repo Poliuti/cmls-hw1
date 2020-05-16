@@ -22,7 +22,7 @@ Then averaged annotations have been generated with 2Hz sampling rate and in addi
 
 \subsection{Features}
 
-A set of features extracted by \emph{openSMILE}\footnote{\url{http://opensmile.sourceforge.net/}} for 500ms windows is provided with the dataset and a set of different features is extracted from the 45 seconds song excerpts using \emph{Librosa}\footnote{\url{https://doi.org/10.5281/zenodo.3606573}} and computing 5 different statistical moments (mean, standard deviation, maximum, minimum and kurtosis).
+A set of features extracted by \emph{openSMILE}~\cite{opensmile} for 500ms windows is provided with the dataset and a set of different features is extracted from the 45 seconds song excerpts using \emph{Librosa}~\cite{librosa} and computing 5 different statistical moments (mean, standard deviation, maximum, minimum and kurtosis).
 
 We make several attempts in order to achieve best results in the cross-validation step \hyperref[sec:evaluation]{(see Evaluation section)} so we try separating tracks in two sets, a "high-annotation" set and a "low-annotation" set, both for valence and arousal mean values, and then plotting the distribution of values of a selected feature for the songs of each set. (e.g. see figure ~\ref{fig:va_mean-spectral_flatness-dists})
 
