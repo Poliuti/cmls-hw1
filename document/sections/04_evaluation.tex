@@ -23,7 +23,8 @@ Given $N$ as the number of samples, it is mathematically computed as follows:
 Since it is a scale-dependent metric, it is important to contextualize it into the scale of reference (i.e. a MSE of 0.2 is worse in a domain ranging from 1 to 10 than in one ranging from 1 to 100).
 
 \paragraph{$R^2$-score}
-The coefficient of determination is a measure of how well unseen samples are likely to be predicted by the model, and it represents the ratio between the variance of the predicted values and the variance that would be predicted by the model. Given $N$ as the number of samples, and $\bar{y}$ as the mean of the predicted values, it is mathematically computed as follows:
+The coefficient of determination is a measure of how well unseen samples are likely to be predicted by the model, and it represents the ratio between the variance of the predicted values and the variance that would be predicted by the model.
+Given $N$ as the number of samples, and $\bar{y}$ as the mean of the predicted values, it is mathematically computed as follows:
 
 \[
 	R^2(y, \hat{y}) = 1 - \frac{
@@ -34,15 +35,21 @@ The coefficient of determination is a measure of how well unseen samples are lik
 \]
 
 It is a scale-invariant metric, therefore it is possible to compare $R^2$-scores across different domain ranges, however it is variance-dependent, so it might not be meaningful to compare it across different datasets.
-A value of $1$ indicates that the regressor perfectly predicts the ground truth. A value of $0$ indicates that the regressor always predicts the mean value $\bar{y}$, disregarding the input features. A negative value indicates that the regressor behaves arbitrarily worse than predicting a constant.
+A value of $1$ indicates that the regressor perfectly predicts the ground truth.
+A value of $0$ indicates that the regressor always predicts the mean value $\bar{y}$, disregarding the input features.
+A negative value indicates that the regressor behaves arbitrarily worse than predicting a constant.
 
 \subsection{Cross-Validation}\label{sec:cross-validation}
 
-It is a methodological error to evaluate metrics against the testing set and then use them to enhance the model, since this leaks information about the testing set which is supposed to be left unknown. This phenomenon is known as \emph{over-fitting} and should be avoided.
+It is a methodological error to evaluate metrics against the testing set and then use them to enhance the model, since this leaks information about the testing set which is supposed to be left unknown.
+This phenomenon is known as \emph{over-fitting} and should be avoided.
 
-One possible option to evaluate the model without using the testing set is to cut a separate sub-set from the training set, called \emph{validation set}, and compute the metrics against this one instead. The drawback, however, is that this option further reduces the training set usable size.
+One possible option to evaluate the model without using the testing set is to cut a separate sub-set from the training set, called \emph{validation set}, and compute the metrics against this one instead.
+The drawback, however, is that this option further reduces the training set usable size.
 
-A better approach consists in iteratively cutting a different small sub-set for validation from the training set, collect the metrics about each possible cut, and aggregate them in terms of mean and standard deviation (see figure~\ref{fig:kfolds}). This way, the whole training set can be used. This procedure is known as \emph{$k$-fold cross-validation}.
+A better approach consists in iteratively cutting a different small sub-set for validation from the training set, collect the metrics about each possible cut, and aggregate them in terms of mean and standard deviation (see figure~\ref{fig:kfolds}).
+This way, the whole training set can be used.
+This procedure is known as \emph{$k$-fold cross-validation}.
 
 \begin{figure}
 	\centering
@@ -51,7 +58,8 @@ A better approach consists in iteratively cutting a different small sub-set for 
 	\label{fig:kfolds}
 \end{figure}
 
-The gathered metrics can effectively be used to evaluate the performance of the chosen regressors over the dataset. At this point, it is possible to tune the regression model (i.e. by changing the free parameters of the regressors) without the risk of over-fitting (see figure~\ref{fig:grid-search-workflow}).
+The gathered metrics can effectively be used to evaluate the performance of the chosen regressors over the dataset.
+At this point, it is possible to tune the regression model (i.e. by changing the free parameters of the regressors) without the risk of over-fitting (see figure~\ref{fig:grid-search-workflow}).
 
 \begin{figure}
 	\centering
@@ -61,9 +69,26 @@ The gathered metrics can effectively be used to evaluate the performance of the 
 \end{figure}
 
 
-\subsection{First tests}\label{sec:first-tests}
+\subsection{Enhancing the model}\label{sec:enhance-model}
 
-At first, we computed the scores of the 3 chosen regressors, \texttt{LinearRegression()}, \texttt{SVR()} and \texttt{KNeighborsRegressor(10, "distance")}, and we obtained the values in table~\ref{table:cross-scores}. It can be observed that, even after some kind of feature selection (both manual and automatic), no regressor could obtain a significant positive score for the values of "valence std" and "arousal std", which arises a problem on the dataset \todo{find a way to explain this part}.
+The sklearn library provides a function \texttt{GridSearchCV()} for automatically selecting the best parameters for a given estimator, based on a grid of possible combinations.
+
+At first, we computed the scores over a simple \texttt{LinearRegression} to evaluate the previous part of feature selection (see section~\ref{sec:dataset-??}).
+Then we took advantage of the grid search to find the suitable parameters for each $\nu$-SVM, $\epsilon$-SVM and K-neighbors-regressor for each annotation to be predicted (see section~\ref{sec:regression-??}).
+In particular the best parameters found for each regressor are reported in table~\ref{table:cross-params}.
+
+\begin{table}
+	\centering
+	\begin{tabular}{l}
+		\toprule \\
+		\todo[inline]{da fare} \\
+		\bottomrule
+	\end{tabular}
+	\caption{Best parameters of the tested regressors}
+	\label{table:cross-params}
+\end{table}
+
+We then extracted the metrics of the best estimators (see table~\ref{table:cross-scores}). It can be observed that, even after several attempts of feature selection (both manual and automatic), and optimization through cross-validation, no regressor could obtain a significant positive $R^2$-score for the values of ``valence std'' and ``arousal std'', and the obtained $R^2$-scores for ``valence mean'' and ``arousal mean'' are still quite low. This might be a consequence of the quality of the provided dataset or some preprocessing step on the dataset that we didn't manage to accomplish.
 
 \begin{table}
 	\centering
@@ -71,8 +96,14 @@ At first, we computed the scores of the 3 chosen regressors, \texttt{LinearRegre
 		\toprule
 		& valence mean & valence std & arousal mean & arousal std \\
 		\midrule
-		Linear & 0.46 ± 0.15 & -0.17 ± 0.17 & 0.45 ± 0.20 & -0.22 ± 0.53 \\
-		SVR & 0.49 ± 0.11 & -0.02 ± 0.09 & 0.51 ± 0.13 & -0.06 ± 0.09 \\
+
+		Linear & 0.44 ± 0.19 & -0.10 ± 0.12 & 0.39 ± 0.13 & -0.13 ± 0.18 \\
+		SGD & 0.41 ± 0.25 & -0.11 ± 0.14 & 0.36 ± 0.19 & -0.16 ± 0.20 \\
+		Ridge & 0.46 ± 0.16 & -0.04 ± 0.09 & 0.41 ± 0.14 & -0.10 ± 0.16 \\
+
+		$\nu$-SVM & 0.40 ± 0.18 & 0.01 ± 0.06 & 0.48 ± 0.16 & 0.01 ± 0.07 \\
+		$\epsilon$-SVM & 0.42 ± 0.18 & 0.02 ± 0.05 & 0.41 ± 0.13 & 0.01 ± 0.07 \\
+
 		K-neighbors & 0.40 ± 0.08 & -0.06 ± 0.09 & 0.40 ± 0.16 & -0.07 ± 0.10 \\
 		\bottomrule
 	\end{tabular}
@@ -80,9 +111,6 @@ At first, we computed the scores of the 3 chosen regressors, \texttt{LinearRegre
 	\label{table:cross-scores}
 \end{table}
 
-
-\subsubsection{Automated cross-validation search}
-
-The sklearn library provides a function \texttt{GridSearchCV()} for automatically selecting the best parameters for a given estimator, based on a grid of possible combinations.
-
-\todo[inline]{una cross-validation vera con \texttt{GridSearchCV()} va fatta, altrimenti qui non possiamo scrivere nulla a riguardo}
+However, a meaningful evaluation of the trained model can be still obtained by comparing the scores of the cross-validation against the scores obtained by the final testing stage.
+This way, we can assess how worse the model will behave when we input never seen data (see section~\ref{sec:conclusions}).
+In particular, given the results in table~\ref{table:cross-scores}, we decided to use Ridge, $\nu$-SVM and KN-regression as candidates for the final testing stage, as they seemed to be the best scoring regressors for each family of regression models.
