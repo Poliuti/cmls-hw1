@@ -696,7 +696,7 @@ def run_cross_validation(init_reg, params, feats_train, annots_train, feat_proce
 
 # Preprocess features:
 #  - First we manually discard unneeded features. This is done first because we still have a pandas `DataFrame` at this stage, otherwise we would not be able to read feature names.
-#  - Then we scale them to have $\bar{X} = 1$ and $\sigma^2_X = 1$.
+#  - Then we scale them to have $\bar{X} = 0$ and $\sigma^2_X = 1$.
 #  - Finally we filter out unneeded or redundant features using automatic feature selection tools.
 
 # +
@@ -831,10 +831,10 @@ kn_param_grid = (
 
 # to avoid running it again, this are the best parameters we found on one particular run
 kn_reg = {
-    "valence_mean": KNeighborsRegressors(weights="uniform", n_neighbors=80,  n_jobs=-1),
-    "valence_std":  KNeighborsRegressors(weights="uniform", n_neighbors=200, n_jobs=-1),
-    "arousal_mean": KNeighborsRegressors(weights="uniform", n_neighbors=80,  n_jobs=-1),
-    "arousal_std":  KNeighborsRegressors(weights="uniform", n_neighbors=150, n_jobs=-1),
+    "valence_mean": KNeighborsRegressor(weights="uniform", n_neighbors=80,  n_jobs=-1),
+    "valence_std":  KNeighborsRegressor(weights="uniform", n_neighbors=200, n_jobs=-1),
+    "arousal_mean": KNeighborsRegressor(weights="uniform", n_neighbors=80,  n_jobs=-1),
+    "arousal_std":  KNeighborsRegressor(weights="uniform", n_neighbors=150, n_jobs=-1),
 }
 # -
 
