@@ -1,26 +1,30 @@
 \section{Dataset}
 In our work we employ the DEAM Dataset (\textit{MediaEval Database for Emotional Analysis in Music}) provided by the \textit{Swiss Center for Affective Sciences of the University of Geneva, Switzerland}.
 
-The dataset consists of 2058 songs annotated with valence and arousal values both continuously (per-second) and over the whole song.
-The dataset from 2013 and 2014 contains annotations on 45 seconds excerpts extracted from random points in songs. Dataset from 2015 has annotations on full songs. Both the 45 seconds clips and full songs are provided in MPEG layer 3 (MP3) format.
-Averaged annotations have been generated with 2Hz sampling rate and in addition to the average, the standard deviation of the annotations is provided.~\cite{soleymani2016deam}
+The dataset consists of 2058 songs annotated with valence and arousal values both continuously (per-second) and over the whole song and csv files containing features extracted from every song.
 
-In particular, our work is focused on the first 2000 songs (45 seconds excerpts),  on the averaged annotations of the dataset and on the features extracted from the music database, both features already given with the dataset and features extracted ex novo.
+In particular, our work is focused on the first 1802 songs, on the averaged annotations of the dataset and on the features extracted from the music database, both features already provided within the dataset and features extracted ex novo.
+
 
 \subsection{Music database}
 
 The music database consists of royalty-free music from several sources: \textit{freemusicarchive.org} (FMA), \textit{jamendo.com}, and the \textit{medleyDB dataset} \cite{bittner2014medleydb}. There are 1,744 clips of 45 seconds from FMA and 58 full length songs, half of which come from medleyDB and another half from Jamendo.\cite{aljanaki2017developing}
-The provided 45 seconds excerpts have been all re-encoded to have the same sampling frequency (i.e, 44100Hz) and have been extracted from random (uniformly distributed) starting point in a given song.\cite{soleymani2016deam}
+The provided 45 seconds excerpts have all been re-encoded to have the same sampling frequency (i.e, 44100Hz) and have been extracted from random (uniformly distributed) starting point in a given song. Both the 45 seconds clips and full songs are provided in MPEG layer 3 (MP3) format.\cite{soleymani2016deam}
 
 The music from the FMA was in rock, pop, soul, blues, electronic, classical, hip-hop, international, experimental, folk, jazz, country and pop genres. The music from the MedleyDB dataset in addition had music in world and rap genres, and the music from Jamendo also had reggae music. For 2014 and 2015 data set, music have been manually checked and the files with bad recording quality or those containing speech or noise instead of music have been excluded. For each artist, have been selected no more than 5 songs to be included in the dataset. For medleyDB and Jamendo full-length songs, have been selected songs which had emotional variation in them, using an existing dynamic MER algorithm for filtering and manual final selection\cite{anna2015emotion}.
 
 
-\subsection{Features from the dataset}
+\susection{Annotations}
+
+The dataset from 2013 and 2014 contains annotations on 45 seconds excerpts extracted from random points in songs. 
+Averaged annotations have been generated with 2Hz sampling rate and in addition to the average, the standard deviation of the annotations is provided.~\cite{soleymani2016deam}
+
+
+\subsection{Features}
 
 A set of features, extracted by openSMILE\footnote{http://opensmile.sourceforge.net/} for 500ms window is provided with the dataset. 
 A list of the given features is reported:
 
-\todo{keep adding features descriptions}
 
 \begin{itemize}
 	\item F0final: the smoothed fundamental frequency contour
