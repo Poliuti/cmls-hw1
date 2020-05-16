@@ -11,9 +11,9 @@ For the final test we used the metrics of MSE and $R^2$-score (see section~\ref{
 			\toprule
 			& valence mean & valence std & arousal mean & arousal std \\
 			\midrule
-			Linear & \dots & \dots & \dots & \dots \\
-			SVR & \dots & \dots & \dots & \dots \\
-			K-neighbors & \dots & \dots & \dots & \dots \\
+			Linear & 0.53 & 1.09 & 0.54 & 1.18 \\
+			SVM & 0.58 & 1.00 & 0.49 & 1.09 \\
+			K-neighbors & 0.62 & 1.00 & 0.61 & 1.08 \\
 			\bottomrule
 		\end{tabular}
 	}
@@ -22,9 +22,9 @@ For the final test we used the metrics of MSE and $R^2$-score (see section~\ref{
 			\toprule
 			& valence mean & valence std & arousal mean & arousal std \\
 			\midrule
-			Linear & \dots & \dots & \dots & \dots \\
-			SVR & \dots & \dots & \dots & \dots \\
-			K-neighbors & \dots & \dots & \dots & \dots \\
+			Linear & 0.45 & -0.08 & 0.45 & -0.09 \\
+			SVM & 0.40 & 0.01 & 0.50 & 0.00 \\
+			K-neighbors & 0.35 & 0.01 & 0.39 & 0.00 \\
 			\bottomrule
 		\end{tabular}
 	}
@@ -32,12 +32,12 @@ For the final test we used the metrics of MSE and $R^2$-score (see section~\ref{
 	\label{table:eval-metrics}
 \end{table}
 
-We also extracted scatter plots comparing the predictions of each regressor against the true values of the testing set. In  figure~\ref{fig:eval-scatter} is depicted the case of SVM, which turned out to be the best model fitting the data.
+We also extracted scatter plots comparing the predictions of each regressor against the true values of the testing set. In  figure~\ref{fig:eval-scatter} is depicted the case of \texttt{SVR}, which turned out to be the best model fitting the data.
 
 \begin{figure}
 	\centering
 	\includegraphics[width=\linewidth]{assets/predictions-scatter.pdf}
-	\caption{predictions vs. ground-truth scatter for \dots regression}
+	\caption{predictions vs. ground-truth scatter for SVM regression}
 	\label{fig:eval-scatter}
 \end{figure}
 
