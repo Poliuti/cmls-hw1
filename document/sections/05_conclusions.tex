@@ -1,1 +1,45 @@
-\section{Conclusions}
+\section{Final testing and conclusions}
+
+Once we refined our model at the best could, we evaluated it against never seen data, by comparing the values predicted by the model, when the testing set is provided as input, against the true values of the annotations in the testing set. As already mentioned in section~\ref{sec:cross-validation}, once the final testing is done, we avoided going back to the model and make further tweaks, as this would have led to over-fitting.
+
+For the final test we used the metrics of MSE and $R^2$-score (see section~\ref{sec:metrics}) and obtained the values reported in table~\ref{table:eval-metrics}. \todo{aggiungere considerazioni sui risultati}
+
+\begin{table}[b]
+	\centering
+	\subcaptionbox{MSEs}{
+		\begin{tabular}{lcccc}
+			\toprule
+			& valence mean & valence std & arousal mean & arousal std \\
+			\midrule
+			Linear & \dots & \dots & \dots & \dots \\
+			SVR & \dots & \dots & \dots & \dots \\
+			K-neighbors & \dots & \dots & \dots & \dots \\
+			\bottomrule
+		\end{tabular}
+	}
+	\subcaptionbox{$R^2$-scores}{
+		\begin{tabular}{lcccc}
+			\toprule
+			& valence mean & valence std & arousal mean & arousal std \\
+			\midrule
+			Linear & \dots & \dots & \dots & \dots \\
+			SVR & \dots & \dots & \dots & \dots \\
+			K-neighbors & \dots & \dots & \dots & \dots \\
+			\bottomrule
+		\end{tabular}
+	}
+	\caption{Evaluation metrics}
+	\label{table:eval-metrics}
+\end{table}
+
+We also extracted scatter plots comparing the predictions of each regressor against the true values of the testing set. In  figure~\ref{fig:eval-scatter} is depicted the case of SVM, which turned out to be the best model fitting the data.
+
+\begin{figure}
+	\centering
+	\includegraphics[width=\linewidth]{assets/predictions-scatter.pdf}
+	\caption{predictions vs. ground-truth scatter for \dots regression}
+	\label{fig:eval-scatter}
+\end{figure}
+
+
+\todo{da finire}
