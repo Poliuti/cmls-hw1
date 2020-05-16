@@ -1,21 +1,37 @@
-\section{Regression} % descrizione di metodi di regressione, selezione feature e cross-validation
-Once features have been extracted, regression theory allow to predict a real value from a set of $N$ given inputs, where $N$ is the dimension of the features space. In this context, dimensional \textbf{Music Emotion Recognition} has been considered as a regression problem where two regressors are trained \textit{independently} for valence and arousal. 
+\section{Regression}\label{sec:regression} % descrizione di metodi di regressione, selezione feature e cross-validation
 
-So, the aim is to find two regressors  
-\[r_{V, A} \colon \R^{N} \to \R\]
-that minimize the mean squared error (\textit{MSE})
-\[ \epsilon = \frac{1}{N} \sum_{i =1}^{N} (y_i - r(\vec{x_i}))^2\]
-In particular, four regressors will be trained to predict the four-element vector
+Once features have been extracted, regression theory allow to predict a real value from a set of $M$ given inputs, where $M$ is the dimension of the features space.
+In this context, dimensional \textbf{Music Emotion Recognition} has been considered as a regression problem where two regressors are trained \textit{independently} for valence and arousal. 
+
+In particular, four regressors
+
+\[
+	r \colon \R^{M} \to \R
+\]
+
+will be trained to predict the four-element vector
+
 \begin{center}
-[valence mean, valence std, arousal mean, arousal std]
+	[valence mean, valence std, arousal mean, arousal std]
 \end{center}
 
-Different regression models are used to find out which set of regressors best fitted data, such as \textbf{Linear Regression}, \textbf{Support Vector Regression} and \textbf{K-Neighbors Regression}. Performance evaluation will be achieved by means of the metrics represented by $R^2$ and $MSE$ statistics.
+Different regression models are used to find out which set of regressors best fitted data, such as \textbf{Linear Regression}, \textbf{Support Vector Regression} and \textbf{K-Neighbors Regression}. Performance evaluation will be achieved by means of the metrics represented by $R^2$ and $MSE$ statistics (see section~\ref{sec:metrics}).
 
-Regressors are implemented as Python module \textit{Scikit-learn} integrating a wide range of state-of-the-art machine learning algorithms \cite{scikit-learn}. Regression training is not computed until the dataset is consistently rearranged and split. In fact, in order to split our collection of features and annotations in the two parts of training and testing set it will be necessary to shuffle our initial dataset so that it will be as inhomogeneous as possible in terms of music genre. Although we will focus on Music Emotion Recognition for the global layer of the song, regression approach is capable to fit also to music emotion variation detection (\textbf{MEVD}) considering the time evolution of features frame-by-frame for each song.
+Regressors are implemented as Python module \textit{Scikit-learn} integrating a wide range of state-of-the-art machine learning algorithms \cite{scikit-learn}.
+Regression training is not computed until the dataset is consistently rearranged and split. In fact, in order to split our collection of features and annotations in the two parts of training and testing set it will be necessary to shuffle our initial dataset so that it will be as inhomogeneous as possible in terms of music genre.
+Although we will focus on Music Emotion Recognition for the global layer of the song, regression approach is capable to fit also to music emotion variation detection (\textbf{MEVD}) considering the time evolution of features frame-by-frame for each song.
 
-Linear regression is a linear model in which coefficients are computed to minimize the residual sum of squares between the observed targets in the dataset, and the targets predicted by the linear approximation \cite{scikit-learn}. It represented our first attempt because of the efficiency in computational terms and consequently had the role to facilitate the search for the best features. Nevertheless another type of algorithm was chosen for the best regressor.
+Linear regression is a linear model in which coefficients are computed to minimize the residual sum of squares between the observed targets in the dataset, and the targets predicted by the linear approximation \cite{scikit-learn}.
+It represented our first attempt because of the efficiency in computational terms and consequently had the role to facilitate the search for the best features. Nevertheless another type of algorithm was chosen for the best regressor.
 
-\textbf{Support Vector Regression} is our second attempt and it turned out to be the best approach. \textbf{Support Vector Machines} represents the operation to map our features space to a higher dimensional one and learn a nonlinear function by a linear learning machine in the kernel-induced feature space, where data are more separable \cite{yang2008regression}. The \textbf{SVR} algorithm supplied by \textit{Scikit-learn} provides an easy way to compute regressors based on different kernels. Out of some attempts involving linear, polynomial, radial basis function (RBF) and sigmoid kernels we found that each of them behaves much better than Linear as K-Neighbors regressors.
+\textbf{Support Vector Regression} is our second attempt and it turned out to be the best approach.
+\textbf{Support Vector Machines} represents the operation to map our features space to a higher dimensional one and learn a nonlinear function by a linear learning machine in the kernel-induced feature space, where data are more separable \cite{yang2008regression}.
+The \textbf{SVR} algorithm supplied by \textit{Scikit-learn} provides an easy way to compute regressors based on different kernels.
+Out of some attempts involving linear, polynomial, radial basis function (RBF) and sigmoid kernels we found that each of them behaves much better than Linear as K-Neighbors regressors.
 
-The latter belongs to the class of unsupervised and supervised neighbors-based learning methods. The workflow of the algorithm is to detect the closest points in distance to the new one and extrapolate from them the value of the label. The $k$ number of neighbors is predefined and it is up to the user. The basic implementation of the algorithm uses uniform weights for each neighbor meaning that each sample contribution is the same. We found advantageous to assign different weights to the samples depending on the inverse of the distance from the new point. The \lstinline{KNeighborsRegressor} algorithm supplied by \textit{Scikit-learn} easily provides the keyword \lstinline{weights = `distance'} to achieve this goal.
+The latter belongs to the class of unsupervised and supervised neighbors-based learning methods.
+The workflow of the algorithm is to detect the closest points in distance to the new one and extrapolate from them the value of the label.
+The $k$ number of neighbors is predefined and it is up to the user.
+The basic implementation of the algorithm uses uniform weights for each neighbor meaning that each sample contribution is the same.
+We found advantageous to assign different weights to the samples depending on the inverse of the distance from the new point.
+The \texttt{KNeighborsRegressor} algorithm supplied by \textit{Scikit-learn} easily provides the keyword \texttt{weights = `distance'} to achieve this goal.
