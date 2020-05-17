@@ -30,7 +30,7 @@ Once we refined our model at the best could, we evaluated it against never seen 
 	\label{table:eval-metrics}
 \end{table}
 
-For the final test we used the metrics of MSE and $R^2$-score (see section~\ref{sec:metrics}) and obtained the values reported in table~\ref{table:eval-metrics}, providing the differences in respect to table ~\ref{table:cross-scores}. It can be noticed that such differences fall between the confidence intervals provided by the cross-validation, therefore we can conclude that we still obtained a robust, albeit inaccurate, model, providing similar results in new unknown scenarios.
+For the final test we used the metrics of MSE and $R^2$-score (see section~\ref{sec:metrics}) and obtained the values reported in table~\ref{table:eval-metrics}, providing the differences in respect to table~\ref{table:cross-scores}. It can be noticed that such differences fall between the confidence intervals provided by the cross-validation, therefore we can conclude that we still obtained a robust, albeit inaccurate, model, providing similar results in new unknown scenarios.
 
 \begin{figure}
 	\centering
@@ -41,4 +41,4 @@ For the final test we used the metrics of MSE and $R^2$-score (see section~\ref{
 
 We also extracted scatter plots comparing the predictions of each regressor against the true values of the testing set. In  figure~\ref{fig:eval-scatter} is depicted the case of $\nu$-SVM, which turned out to be the best model fitting the data. In the best case scenario, these scatters should draw a 45° line. In our case, the scattering of ``valence std'' and ``arousal std'' clearly outline the bad $R^2$-scores obtained for these annotations.
 
-In our assignment, it was requested to use the static annotations and elaborate a regression model over static features. A possible way to develop and improve the accuracy of the obtained models could be to adopt a dynamic approach, in which values related to temporal windows are considered instead.
+In our assignment, it was requested to use the static annotations and elaborate a regression model over static features. A possible way to develop and improve the accuracy of the obtained models could be to adopt a dynamic approach, in which values related to temporal windows are considered instead, and it is left as future work.
