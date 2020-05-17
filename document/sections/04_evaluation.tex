@@ -1,6 +1,6 @@
 \section{Model training and evaluation}\label{sec:evaluation}
 
-In order to avoid over-fitting and be able to evaluate our model on a real-world scenario, the dataset has to be initially split into a \emph{training set} and a \emph{testing set}.
+In order to avoid over-fitting and be able to evaluate our model on a real-world scenario, the dataset has to be initially shuffled (because the original dataset is ordered by genre) and split into a \emph{training set} and a \emph{testing set}.
 Consequently, every kind of consideration, analysis and training was made by using the training set only, to avoid information leaking from the testing set to the training set.
 A final testing can be done at the very last stage, once we are satisfied with the trained model and we are willing to test it against never seen data (see next section).
 
@@ -52,7 +52,7 @@ This procedure is known as \emph{$k$-fold cross-validation}.
 
 \begin{figure}
 	\centering
-	\includegraphics[width=0.5\linewidth]{assets/kfolds.png}
+	\includegraphics[width=0.6\linewidth]{assets/kfolds.png}
 	\caption{$k$-fold cross-validation example with $k=5$ \cite{sklearn-crossval}}
 	\label{fig:kfolds}
 \end{figure}
@@ -74,7 +74,7 @@ The sklearn library provides a function \texttt{GridSearchCV()} for automaticall
 
 At first, we computed the scores over a simple \texttt{LinearRegression} to evaluate the feature selection stage (see section~\ref{sec:features}).
 Then we took advantage of the grid search to first optimize the linear model by using a Stochastic Gradient Descent regressor and a Ridge regressor with integrated cross-validation optimization.
-We finally used again the grid search to find the suitable parameters (see section~\ref{sec:regression-??}) for $\nu$-SVM, $\epsilon$-SVM and KN-regressor.
+We finally used again the grid search to find the suitable parameters (see section~\ref{sec:regression}) for $\nu$-SVM, $\epsilon$-SVM and KN-regressor.
 For example, the best parameters found for the $\nu$-SVM regressor are reported in tables~\ref{table:cross-params-svr}.
 
 \begin{table}
