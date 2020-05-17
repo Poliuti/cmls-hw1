@@ -18,7 +18,20 @@ The music from the FMA is in rock, pop, soul, blues, electronic, classical, hip-
 The dataset from 2013 and 2014 contains annotations on 45 seconds excerpts extracted from random points in songs. Each excerpt was annotated by a minimum of 10 workers and the static annotations were made on nine-point scale on valence and arousal for the whole 45 seconds excerpts.~\cite{aljanaki2017developing}.
 Then, averaged annotations have been generated with 2\,Hz sampling rate, providing both mean and standard deviation values.~\cite{soleymani2016deam}
 
-We standardize annotations using the \texttt{scale} function of the  \texttt{preprocessing} module which centers the values around zero to eliminate the effects of possible anomalies.
+We standardize annotations using the \texttt{scale} function of the  \texttt{preprocessing} module which centers the values around zero to eliminate the effects of possible anomalies. Table~\ref{table:annot-ranges} reports obtained ranges for each annotation after the standardization.
+
+\begin{table}[h]
+	\centering
+	\begin{tabular}{cccc}
+		\toprule
+		valence mean & valence std & arousal mean & arousal std \\
+		\midrule
+		5.794 & 6.746 & 5.043 & 5.802 \\
+		\bottomrule
+	\end{tabular}
+	\caption{Range (i.e. max-min) for each annotation after the standardization}
+	\label{table:annot-ranges}
+\end{table}
 
 
 \subsection{Features}\label{sec:features}
