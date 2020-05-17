@@ -3,9 +3,9 @@
 The aim of this document is to describe the realization of a regressor able to predict the mood of a music piece. In particular, in accordance with the Music Emotion Recognition (MER) theory, we used a dimensional approach to face this problem. This approach considers emotions on a two dimensional plane: the \emph{valence}, that describes the grade of pleasantness, and the \emph{arousal}, which represents the level of intensity of the emotion.
 
 Our work is based on a provided \textbf{dataset} containing songs, valence-arousal annotations and features extracted from the songs. Section~\ref{sec:dataset} contains a description of the given dataset and of the operations we made on it: feature extraction, feature selection and annotation standardization.
-The next step was to implement the \textbf{regressors}, trying with different kinds of them and with different parameters, in order to find the best model. This is analyzed in detail in section~\ref{sec:regression}.
+The next step was to choose the \textbf{regressors}, comparing different kinds of them and analyzing their parameters, in order to find the best model. This is analyzed in detail in section~\ref{sec:regression}.
 To correctly \textbf{evaluate} and enhance our model, we split our dataset and took advantage of cross-validation tools, as described in section~\ref{sec:evaluation}.
-The last step was to \textbf{test} the model against never seen data and draw our conclusions on the work, in section~\ref{sec:conclusions}.
+The last step was to \textbf{test} the model against never seen data and draw our \textbf{conclusions} on the work, in section~\ref{sec:conclusions}.
 
 The following sections will analyze our workflow and the tests that led us to our solution of this problem. However the resolution approach was not linear, therefore the flow of this paper does not reflect our actions in a strictly chronological order. Further details can be found in the Jupyter Notebook containing the results of our experiment \cite{notebook} and in the GitHub repository of this assignment \cite{github}.
 

@@ -1,10 +1,10 @@
-\section{Evaluation}\label{sec:evaluation}
+\section{Model training and evaluation}\label{sec:evaluation}
 
-In order to avoid over-fitting and be able to evaluate a real-world scenario for our trained model, the dataset has to be initially split into a \emph{training set} and a \emph{testing set}.
+In order to avoid over-fitting and be able to evaluate our model on a real-world scenario, the dataset has to be initially split into a \emph{training set} and a \emph{testing set}.
 Consequently, every kind of consideration, analysis and training was made by using the training set only, to avoid information leaking from the testing set to the training set.
+A final testing can be done at the very last stage, once we are satisfied with the trained model and we are willing to test it against never seen data (see next section).
 
-A powerful tool that can help us understand how to choose the most suitable regressor for each target value is the \emph{cross-validation}, explained in the following.
-A final testing can be done at the very last stage, once we are satisfied with the result of the cross-validation and we are willing to test the obtained model against never seen data.
+A powerful tool that can help us understand how to properly choose the features, the regressor and its parameters, and effectively evaluate the model before the final testing, is the \emph{cross-validation}, explained in the following.
 
 \subsection{Metrics}\label{sec:metrics}
 
