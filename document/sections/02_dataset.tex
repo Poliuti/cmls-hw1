@@ -36,7 +36,7 @@ We standardized annotations using the sklearn~\cite{scikit-learn} \texttt{scale}
 
 \subsection{Features}\label{sec:features}
 
-A set of features extracted by \emph{openSMILE}~\cite{opensmile} for 500\,ms windows is provided with the dataset, while a set of different features was extracted from the 45 seconds song excerpts using \emph{Librosa}~\cite{librosa}, computing for the latter 5 different statistical moments (mean, standard deviation, maximum, minimum and kurtosis).
+A set of features extracted by \emph{openSMILE}~\cite{opensmile} for 500\,ms windows is provided with the dataset. We also extracted a set of additional features from the 45 seconds song excerpts using \emph{Librosa}~\cite{librosa}, computing for the latter 5 different statistical moments (mean, standard deviation, maximum, minimum and kurtosis).
 
 We made several attempts in order to achieve best results in the cross-validation step (see section~\ref{sec:enhance-model}), so we first tried by separating tracks in two sets, a "high-annotation" set and a "low-annotation" set, for both valence and arousal mean/std values. Plotting the value distribution of a certain feature for some songs of each set, we could check if some differences were arising in the way those distributions gathered (e.g. see figure~\ref{fig:va_mean-spectral_flatness-dists}).
 
@@ -56,6 +56,6 @@ Then, we realized that a better way to visualize features might have been to plo
 	\label{fig:scatter-spectral_bandwidth_amean}
 \end{figure}
 
-Finally, in addition to manual selection, we filter out unneeded or redundant features using automatic feature selection tools provided by sklearn, like ``recursive feature elimination'', ``select $k$-best'' and ``variance threshold''. In particular, the last two turned out to be the more effective.
+Finally, in addition to manual selection, we filter out unneeded or redundant features using automatic feature selection tools provided by sklearn, like ``recursive feature elimination'', ``select $k$-best'' and ``variance threshold''. In particular, the last two turned out to be the most effective.
 
 For convenience, we arranged each feature processing step, including a standardization scaling (needed for some types of regressors, see section~\ref{sec:regression}), in a sklearn \texttt{Pipeline} that is executed before each fitting stage and predicting stage of the regressors.
