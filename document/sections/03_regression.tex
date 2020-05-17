@@ -21,19 +21,23 @@ Regressors are implemented by taking advantage of the Python library \textit{Sci
 Regression training is not computed until the dataset is consistently rearranged and split. In fact, in order to split our collection of features and annotations in the two parts of training and testing set it will be necessary to shuffle our initial dataset so that it will be as inhomogeneous as possible in terms of music genre. \todo{ripetizione di evaluation?}
 Although we will focus on Music Emotion Recognition for the global layer of the song, the regression approach is capable to fit also to music emotion variation detection (\textbf{MEVD}), considering the time evolution of features frame-by-frame for each song.
 
-Linear regression is a linear model in which coefficients are computed to minimize the residual sum of squares between the observed targets in the dataset, and the targets predicted by the linear approximation \cite{scikit-learn}.
-It represented our first attempt because of the efficiency in computational terms and consequently had the role to facilitate the search for the best features. Nevertheless another type of algorithm was chosen for the best regressor. \todo[inline]{menzionare anche stochastic e ridge?}
+\textbf{Linear regression} is a linear model in which coefficients are computed to minimize the residual sum of squares between the observed targets in the dataset, and the targets predicted by the linear approximation \cite{scikit-learn}. 
+Two other linear regressions we implemented are the \textbf{Ridge regression} with built-in cross-validation and the \textbf{Stochastic Gradient Descent regression}. 
+The latter is set to be $\epsilon$-insensitive which is the same loss function used in SVR. Furthermore we provided the stopping criterion, the threshold $\epsilon$ and the $\alpha$ constant that multiplies the regularization term. The higher the value of $\alpha$, the stronger the regularization. As regards the Ridge regressor it performs a Generalized Cross-Validation, which is a form of Leave-One-Out cross-validation \cite{scikit-learn}. Out of them it turned out Ridge regressor is the most suitable algorithm for our purpose.
+It represented our first attempt because of the efficiency in computational terms and consequently had the role to facilitate the search for the best features. 
+Nevertheless another type of algorithm was chosen for the best regressor.
 
 \textbf{Support Vector Regression} is our second attempt and it turned out to be the best approach.
 \textbf{Support Vector Machines} represent the operation to map our features space to a higher dimensional one and learn a nonlinear function by a linear learning machine in the kernel-induced feature space, where data are more separable \cite{yang2008regression}.
-The \textbf{SVR} algorithm supplied by \textit{Scikit-learn} provides an easy way to compute regressors based on different kernels.
-Out of some attempts involving linear, polynomial, radial basis function (RBF) and sigmoid kernels we found that each of them behaves much better than Linear and K-Neighbors regressors. \todo[inline]{ricontrollare kernel (usiamo solo rbf e sigmoid), menzionare $\epsilon$ e $\nu$ e free paramenters}
+The \textbf{SVR} algorithm supplied by \textit{Scikit-learn} provides an easy way to compute regressors based on different kernels and it allowed us to set the regularization parameter $C$, the tolerance for stopping criterion and the fundamental parameter $\epsilon$.
+Otherwise the implementation of \textbf{NuSVR} algorithm revealed to be the most suitable. We set the parameter $\nu$ to control the number of support vectors and the penalty parameter $C$ of the error term.
+Out of some attempts involving radial basis function (RBF) and sigmoid kernels we found that each of them behaves much better than Linear and K-Neighbors regressors. \todo[inline]{ricontrollare kernel (usiamo solo rbf e sigmoid), menzionare $\epsilon$ e $\nu$ e free parameters}
 
 The latter belongs to the class of unsupervised and supervised neighbors-based learning methods.
-The workflow of the algorithm is to detect the closest points in distance to the new one and extrapolate from them the value of the label.
-The $k$ number of neighbors is predefined and it is up to the user. \todo{noi usiamo la cross per trovare $k$}
-The basic implementation of the algorithm uses uniform weights for each neighbor meaning that each sample contribution is the same.
-We found advantageous to assign different weights to the samples depending on the inverse of the distance from the new point.
+The workflow of the \textbf{K-Neighbors regressor} is to detect the closest points in distance to the new one and extrapolate from them the value of the label.
+The $k$ number of neighbors is predefined and it is up to the user. In particular, cross validation was helpful for setting the most suitable $k$ (see section~\ref{sec:cross-validation})   \todo{noi usiamo la cross per trovare $k$}
+The basic implementation of the algorithm uses uniform weights for each neighbor meaning that each sample contribution is the same and it was the most efficient and suitable choice.
+We also tried to assign different weights to the samples depending on the inverse of the distance from the new point.
 The \texttt{KNeighborsRegressor} algorithm supplied by \textit{Scikit-learn} easily provides the keyword \texttt{weights = `distance'} to achieve this goal. \todo[inline]{in realtà con la cross quel che si comporta meglio è uniform}
 
 Cross-validation is used to find the best parameters for each regressor and the procedure will be described in detail in the next section.
