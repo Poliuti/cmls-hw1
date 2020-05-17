@@ -1,8 +1,7 @@
 \section{Evaluation}\label{sec:evaluation}
-\label{sec:evaluation}
 
-In order to avoid over-fitting and be able to evaluate a real-world scenario for our trained model, the dataset is initially split into a \emph{training set} and a \emph{testing set}.
-Consequently, every kind of consideration, analysis and training is made by using the training set only, to avoid information leaking from the testing set to the training set.
+In order to avoid over-fitting and be able to evaluate a real-world scenario for our trained model, the dataset has to be initially split into a \emph{training set} and a \emph{testing set}.
+Consequently, every kind of consideration, analysis and training was made by using the training set only, to avoid information leaking from the testing set to the training set.
 
 A powerful tool that can help us understand how to choose the most suitable regressor for each target value is the \emph{cross-validation}, explained in the following.
 A final testing can be done at the very last stage, once we are satisfied with the result of the cross-validation and we are willing to test the obtained model against never seen data.
@@ -73,8 +72,8 @@ At this point, it is possible to tune the regression model (i.e. by changing the
 
 The sklearn library provides a function \texttt{GridSearchCV()} for automatically selecting the best parameters for a given estimator, based on a grid of possible combinations.
 
-At first, we computed the scores over a simple \texttt{LinearRegression} to evaluate the previous part of feature selection (see section~\ref{sec:dataset-??}).
-Then we took advantage of the grid search to find the suitable parameters for each $\nu$-SVM, $\epsilon$-SVM and K-neighbors-regressor for each annotation to be predicted (see section~\ref{sec:regression-??}).
+At first, we computed the scores over a simple \texttt{LinearRegression} to evaluate the previous part on5 feature selection (see section~\ref{sec:features}).
+Then we took advantage of the grid search to find the suitable parameters (see section~\ref{sec:regression-??}) for each $\nu$-SVM, $\epsilon$-SVM and KN-regressor for each annotation to be predicted.
 In particular the best parameters found for each regressor are reported in table~\ref{table:cross-params}.
 
 \begin{table}
@@ -88,7 +87,7 @@ In particular the best parameters found for each regressor are reported in table
 	\label{table:cross-params}
 \end{table}
 
-We then extracted the metrics of the best estimators (see table~\ref{table:cross-scores}). It can be observed that, even after several attempts of feature selection (both manual and automatic), and optimization through cross-validation, no regressor could obtain a significant positive $R^2$-score for the values of ``valence std'' and ``arousal std'', and the obtained $R^2$-scores for ``valence mean'' and ``arousal mean'' are still quite low. This might be a consequence of the quality of the provided dataset or some preprocessing step on the dataset that we didn't manage to accomplish.
+After refining the feature selection, we extracted the metrics of the best found estimators (see table~\ref{table:cross-scores}). It can be observed that, even after several attempts of feature selection (both manual and automatic), and optimization through cross-validation, no regressor could obtain a significant positive $R^2$-score for the values of ``valence std'' and ``arousal std'', and the obtained $R^2$-scores for ``valence mean'' and ``arousal mean'' were still quite low. This might be a consequence of the poor quality of the provided dataset, which required some preprocessing step on it that we didn't manage to accomplish.
 
 \begin{table}
 	\centering
@@ -113,4 +112,4 @@ We then extracted the metrics of the best estimators (see table~\ref{table:cross
 
 However, a meaningful evaluation of the trained model can be still obtained by comparing the scores of the cross-validation against the scores obtained by the final testing stage.
 This way, we can assess how worse the model will behave when we input never seen data (see section~\ref{sec:conclusions}).
-In particular, given the results in table~\ref{table:cross-scores}, we decided to use Ridge, $\nu$-SVM and KN-regression as candidates for the final testing stage, as they seemed to be the best scoring regressors for each family of regression models.
+In particular, given the results in table~\ref{table:cross-scores}, we decided to use Ridge, $\nu$-SVM and KN-regression as candidates for the final testing stage, as they seemed to be the best scoring regressors for each family of regression models considered. \todo{rivedere sta frase}
