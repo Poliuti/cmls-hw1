@@ -1,12 +1,10 @@
 \section{Introduction}
 
-The aim of this document is to describe the realization of a regressor able to predict the mood of a music piece. In particular, in accordance with the Music Emotion Recognition (MER) theory, we used a dimensional approach to face this problem. We considered two ``emotion dimensions'' to describe emotions: the \emph{valence}, that describes the grade of pleasantness, and the \emph{arousal}, which represents the level of intensity of the emotion.
+The aim of this document is to describe the realization of a regressor able to predict the mood of a music piece. In particular, in accordance with the Music Emotion Recognition (MER) theory, we used a dimensional approach to face this problem. This approach considers emotions on a two dimensional plane: the \emph{valence}, that describes the grade of pleasantness, and the \emph{arousal}, which represents the level of intensity of the emotion.
 
-The DEAM Dataset was provided to us. We considered extracts of music pieces, already re-encoded to have the same duration of and the same sampling frequency.
-Each annotation related to these songs are provided in terms of mean and standard deviation, for both valence and arousal.
-The DEAM Dataset also contains, for each piece, a set of values for already extracted features, as the zero crossing rate, the spectrum centroid, etc. This aspects will be analyzed in detail in section~\ref{sec:database}.
+Our work is based on a provided dataset containing songs, valence-arousal annotations and features extracted from the songs. Section~\ref{sec:dataset} contains a description of the given dataset and of the operations we made on it: dataset splitting, features extraction, features selection, annotations standardization.
 
-The first step of our research was the \textbf{feature selection}: we studied the usefulness of the provided features, as well as extracting others using the Librosa library in order to have a wider choice. Then, we split the dataset to obtain a training and a testing set. The next step was to implement the \textbf{regressors}, trying with different kinds of them and with different parameters, in order to find the best model. The last step was the \textbf{evaluation} of the prediction, using as metrics the mean squared error and the $R^2$-score.
+The next step was to implement the \textbf{regressors}, trying with different kinds of them and with different parameters, in order to find the best model. The last step was the \textbf{evaluation} of the prediction, using as metrics the mean squared error and the $R^2$-score.
 
 In the following sections we will analyze in detail our workflow and the tests that led us to our solution of this problem. The document is divided in sections, each one of them describing a different topic we considered for our choices. However they are depending on each other, therefore the flow of this paper does not reflect our chronological approach. Further details can be found in the Jupyter Notebook containing the results of our experiment \cite{notebook} and in the GitHub repository of this assignment \cite{github}.
 
