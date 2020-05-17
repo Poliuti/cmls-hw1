@@ -72,25 +72,42 @@ At this point, it is possible to tune the regression model (i.e. by changing the
 
 The sklearn library provides a function \texttt{GridSearchCV()} for automatically selecting the best parameters for a given estimator, based on a grid of possible combinations.
 
-At first, we computed the scores over a simple \texttt{LinearRegression} to evaluate the previous part on5 feature selection (see section~\ref{sec:features}).
-Then we took advantage of the grid search to find the suitable parameters (see section~\ref{sec:regression-??}) for each $\nu$-SVM, $\epsilon$-SVM and KN-regressor for each annotation to be predicted.
-In particular the best parameters found for each regressor are reported in tables~\ref{table:cross-params-sgd}, \dots.
+At first, we computed the scores over a simple \texttt{LinearRegression} to evaluate the feature selection stage (see section~\ref{sec:features}).
+Then we took advantage of the grid search to first optimize the linear model by using a Stochastic Gradient Descent regressor and a Ridge regressor with integrated cross-validation optimization.
+We finally used again the grid search to find the suitable parameters (see section~\ref{sec:regression-??}) for $\nu$-SVM, $\epsilon$-SVM and KN-regressor.
+For example, the best parameters found for the $\nu$-SVM regressor are reported in tables~\ref{table:cross-params-svr}.
 
 \begin{table}
 	\centering
-	\begin{tabular}{lcccc}
+	\begin{tabular}{lccc}
 		\toprule
-		& loss function & $\alpha$ & $\epsilon$ & tolerance \\
+		& kernel & $C$ & $\nu$ \\
 		\midrule
-		valence mean & $\epsilon$-insensitive & $10^{-3}$ & $10^{-3}$ & $10^{-4}$ \\
-		valence std & $\epsilon$-insensitive & $10^{-2}$ & $10^{-2}$ & $10^{-4}$ \\
-		arousal mean & $\epsilon$-insensitive & $10^{-2}$ & $10^{-3}$ & $10^{-3}$ \\
-		arousal std & $\epsilon$-insensitive & $10^{-3}$ & $10^{-1}$ & $10^{-4}$ \\
+		valence mean & rbf & $10$ & $0.75$ \\
+		valence std & rbf & $0.1$ & $0.25$ \\
+		arousal mean & rbf & $1$ & $0.5$ \\
+		arousal std & rbf & $0.1$ & $0.75$ \\
 		\bottomrule
 	\end{tabular}
-	\caption{Best parameters for SGD regressor}
-	\label{table:cross-params-sgd}
+	\caption{Best parameters for $\nu$-SVM regressor}
+	\label{table:cross-params-svr}
 \end{table}
+
+%\begin{table}
+%	\centering
+%	\begin{tabular}{lcccc}
+%		\toprule
+%		& loss function & $\alpha$ & $\epsilon$ & tolerance \\
+%		\midrule
+%		valence mean & $\epsilon$-insensitive & $10^{-3}$ & $10^{-3}$ & $10^{-4}$ \\
+%		valence std & $\epsilon$-insensitive & $10^{-2}$ & $10^{-2}$ & $10^{-4}$ \\
+%		arousal mean & $\epsilon$-insensitive & $10^{-2}$ & $10^{-3}$ & $10^{-3}$ \\
+%		arousal std & $\epsilon$-insensitive & $10^{-3}$ & $10^{-1}$ & $10^{-4}$ \\
+%		\bottomrule
+%	\end{tabular}
+%	\caption{Best parameters for SGD regressor}
+%	\label{table:cross-params-sgd}
+%\end{table}
 
 After refining the feature selection, we extracted the metrics of the best found estimators (see table~\ref{table:cross-scores}). It can be observed that, even after several attempts of feature selection (both manual and automatic), and optimization through cross-validation, no regressor could obtain a significant positive $R^2$-score for the values of ``valence std'' and ``arousal std'', and the obtained $R^2$-scores for ``valence mean'' and ``arousal mean'' were still quite low. This might be a consequence of the poor quality of the provided dataset, which required some preprocessing step on it that we didn't manage to accomplish.
 
@@ -117,4 +134,4 @@ After refining the feature selection, we extracted the metrics of the best found
 
 However, a meaningful evaluation of the trained model can be still obtained by comparing the scores of the cross-validation against the scores obtained by the final testing stage.
 This way, we can assess how worse the model will behave when we input never seen data (see section~\ref{sec:conclusions}).
-In particular, given the results in table~\ref{table:cross-scores}, we decided to use Ridge, $\nu$-SVM and KN-regression as candidates for the final testing stage, as they seemed to be the best scoring regressors for each family of regression models considered. \todo{rivedere sta frase}
+In particular, given the results in table~\ref{table:cross-scores}, we decided to use Ridge, $\nu$-SVM and KN-regression as candidates for the final testing stage, as they seemed to be the best scoring regressors for each family of regression models considered.
