@@ -12,10 +12,15 @@
 \usepackage{subcaption} % for subfigures and subtables
 \usepackage{booktabs} % enhancement for tables
 \usepackage{gensymb} % for \degree
+\usepackage{xcolor}
 \usepackage{todonotes}
 
 % convenience
 \newcommand{\R}{\mathbb{R}}
+\newcommand{\inc}[1]{{%
+	\ifdim #1pt<0pt \color[rgb]{0.5,0,0} \else \color[rgb]{0,0.5,0} \fi%
+	\scriptsize(#1)%
+}}
 \DeclareUnicodeCharacter{B0}{\degree}
 \DeclareUnicodeCharacter{B1}{$\pm$}
 
